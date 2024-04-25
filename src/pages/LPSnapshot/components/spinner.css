@@ -1,0 +1,66 @@
+.lds-ripple {
+    display: inline-block;
+    position: relative;
+    width: 120px; /* Increased from 80px */
+    height: 120px; /* Increased from 80px */
+  }
+  .lds-ripple div {
+    position: absolute;
+    border: 6px solid; /* Increased thickness for visual balance */
+    opacity: 1;
+    border-radius: 50%;
+    animation: lds-ripple 1.2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+  }
+  .lds-ripple div:nth-child(2) {
+    animation-delay: -0.6s; /* Adjusted for a smoother animation with the new size */
+  }
+  @keyframes lds-ripple {
+    0%, 4.9% {
+      top: 54px; /* Adjusted from 36px */
+      left: 54px; /* Adjusted from 36px */
+      width: 0;
+      height: 0;
+      opacity: 0;
+    }
+    5% {
+      top: 54px; /* Adjusted from 36px */
+      left: 54px; /* Adjusted from 36px */
+      width: 0;
+      height: 0;
+      opacity: 1;
+    }
+    100% {
+      top: 0px;
+      left: 0px;
+      width: 108px; /* Adjusted from 72px */
+      height: 108px; /* Adjusted from 72px */
+      opacity: 0;
+    }
+  }
+  
+
+
+.card-animation {
+  opacity: 0; /* Initial state - the cards are invisible */
+  animation: cardEntry 0.8s ease-out forwards;
+}
+
+@keyframes cardEntry {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Image grow on hover */
+.image-hover-grow {
+  transition: transform 0.2s ease;
+}
+
+.image-hover-grow:hover {
+  transform: scale(1.02); /* Adjust scale value as needed */
+}
