@@ -8,6 +8,7 @@ import { algodClient, algodIndexer } from '../../../utils/algod';
 import hammer from '../../../assets/hammer.png';
 import { formatAddress, truncateTxId, formatVoiAmount, formatArc200Amount, formatArc200BalanceAmount } from '../../../utils/formatting';
 import { Link } from '@nextui-org/react';
+import Papa from 'papaparse';  
 import './spinner.css';
 
 window.Buffer = Buffer;
@@ -17,18 +18,7 @@ const handleTxIdClick = (txId) => {
 };
 
 
-interface LPToken {
-  name: string;
-  id: string;
-  decimals: number;
-}
-
-interface HolderData {
-  account: string;
-  amount: string;
-}
-
-const SendViaLPHolderComponent: React.FC = () => {
+const SendViaCSVListComponent: React.FC = () => {
   const { activeAccount, signTransactions, sendTransactions } = useWallet();
   const [builder, setBuilder] = useState<{ arc200?: any }>({});
   const [perHolderAmount, setPerHolderAmount] = useState<boolean>(false);
@@ -36,6 +26,7 @@ const SendViaLPHolderComponent: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [txIds, setTxIds] = useState<string[]>([]);
+  const [addresses, setAddresses] = useState<string[]>([]);
   const [totalGroups, setTotalGroups] = useState<number>(0);
   const [signedGroups, setSignedGroups] = useState<number>(0);
   const [totalTransactions, setTotalTransactions] = useState(0);
@@ -46,20 +37,6 @@ const SendViaLPHolderComponent: React.FC = () => {
   const [voiBalance, setVoiBalance] = useState(0); 
   const [tokenInfo, setTokenInfo] = useState({ id: '6779767', decimals: 6, name: 'VIA' }); 
   const [ci, setCi] = useState<any>(null); 
-  const [tokenId, setTokenId] = useState<string>('');
-  const [lpTokens] = useState<LPToken[]>([
-    { name: 'Nomadex VOI / VIA', id: '27705276', decimals: 6 },
-      { name: 'Nomadex VOI / VRC200', id: '27705289', decimals: 8 },
-      { name: 'Nomadex VOI / VOICE', id: '27705302', decimals: 18 },
-      { name: 'Nomadex VOI / TACOS', id: '27705315', decimals: 0 },
-      { name: 'Nomadex VOI / HD', id: '27705705', decimals: 10 },
-      { name: 'Nomadex VOI / JG3', id: '27705837', decimals: 8 },
-      { name: 'Nomadex VOI / PEPE', id: '28367285', decimals: 2 },
-      { name: 'Nomadex VOI / VWIFI', id: '28370558', decimals: 6 },
-      { name: 'Nomadex VOI / PIX', id: '29178823', decimals: 3 },
-      { name: 'Nomadex VOI / ROCKET', id: '29204404', decimals: 7 },
-      { name: 'Nomadex VOI / COOL', id: '29207032', decimals: 6 },
-  ]);
 
   
   const tokenOptions = [
@@ -80,6 +57,32 @@ const SendViaLPHolderComponent: React.FC = () => {
     { name: 'VRC200 v2', id: '40425710', decimals: 8 },
   ];
 
+  const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "text/csv") {
+        alert("Please upload a CSV file.");
+        return;
+    }
+
+    Papa.parse(file, {
+        complete: (results) => {
+            const addresses = results.data.map(row => {
+                const address = row[0].trim();
+                if (address && address.length === 58) {
+                    return address;
+                } else {
+                    alert("CSV format error: Each address must be exactly 58 characters long.");
+                    return null;
+                }
+            }).filter(address => address);
+            setAddresses(addresses);
+        },
+        header: false
+    });
+};
+
 
   const handleTokenChange = (selectedTokenId) => {
     const selectedToken = tokenOptions.find(token => token.id === selectedTokenId);
@@ -90,17 +93,14 @@ const SendViaLPHolderComponent: React.FC = () => {
 
   useEffect(() => {
     const fetchTokensAndOwners = async () => {
-      if (!tokenId) return;
           setLoading(true);
           try {
-            const response = await fetch(`/api/arc200-snapshot/testnet/${tokenId}`);
-            const data: HolderData[] = await response.json();
-            const validHolders = new Map<string, number>();
+           
+              const validHolders = new Map<string, number>();
+              addresses.forEach(address => {
+                validHolders.set(address, 1); // Simulate the amount for the sake of the example
+              });
             setLpHolders(validHolders)
-            data.forEach(holder => {
-                const amount = parseFloat(holder.amount);
-                if (amount > 0) validHolders.set(holder.account, amount);
-            });
           
             let uniqueReceivers = [...validHolders.keys()];
           
@@ -168,7 +168,7 @@ const SendViaLPHolderComponent: React.FC = () => {
     };
   
     fetchTokensAndOwners();
-  }, [tokenId, tokenInfo.id]);
+  }, [File, tokenInfo.id]);
   
 
   useEffect(() => {
@@ -320,7 +320,7 @@ useEffect(() => {
       return;
     }
   
-    if (!tokenId || !amount) {
+    if (!File || !amount) {
       alert("Please select a token and specify an amount.");
       return;
     }
@@ -332,15 +332,12 @@ useEffect(() => {
     setSignedTransactions(0);
   
     try {
-      const response = await fetch(`/api/arc200-snapshot/testnet/${tokenId}`);
-      const data: HolderData[] = await response.json();
       const validHolders = new Map<string, number>();
-      setLpHolders(validHolders)
-      // Parse and filter holders with a positive amount
-      data.forEach(holder => {
-          const amount = parseFloat(holder.amount);
-          if (amount > 0) validHolders.set(holder.account, amount);
-      });
+              addresses.forEach(address => {
+                validHolders.set(address, 1); // Simulate the amount for the sake of the example
+              });
+            setLpHolders(validHolders)
+  
     
       // Get unique holders
       let uniqueReceivers = [...validHolders.keys()];
@@ -469,7 +466,7 @@ fetch('/api/record-lp-airdrop', {
     tokenId: tokenInfo.id,
     tokenName: tokenInfo.name,
     tokenDecimals: tokenInfo.decimals,
-    LP_Token: tokenId, 
+    //LP_Token: tokenId, 
     receivers: receiverAmounts.receivers,
     amounts: receiverAmounts.amounts,
     totalAmount: receiverAmounts.totalAmount
@@ -506,7 +503,7 @@ fetch('/api/record-lp-airdrop', {
       <Grid numItemsSm={1} numItemsLg={1} className="flex justify-center">
         <Card className="max-w-screen-lg flex flex-col items-center">
         <div className="flex items-center">
-            <Metric className="mb-4 text-center font-pixel ml-16 flex-grow">LP Provider Airdropper</Metric>
+            <Metric className="mb-4 text-center font-pixel ml-16 flex-grow">CSV List Airdropper</Metric>
             <img src={hammer} alt="Hammer" className="w-10 h-10 mb-4 ml-4" />
         </div>
           {!activeAccount && <Text className="text-center mt-2">Connect a wallet top right to get started!</Text>}
@@ -519,14 +516,8 @@ fetch('/api/record-lp-airdrop', {
     <Text className="text-center"><span className="font-bold">{tokenInfo.name} Balance: </span>{formatArc200BalanceAmount(balance, tokenDecimals)}</Text>
 </div>
       )}
-           <Divider className='font-bold'>Step 1: Select an LP Token</Divider>
-                    <SearchSelect placeholder="Select LP Token" className='' onValueChange={setTokenId}>
-                        {lpTokens.map(token => (
-                            <SearchSelectItem key={token.id} value={String(token.id)}>
-                                {token.name}
-                            </SearchSelectItem>
-                        ))}
-                    </SearchSelect>
+          <Divider className='font-bold'>Step 1: Upload Receivers CSV</Divider>
+                    <input type="file" onChange={handleFileUpload} className='ml-24' />
             <Divider className='mt-12 font-bold'>Step 2: Specify amount & token to send</Divider>
           <div className="flex items-center space-x-3 w-full">
             <TextInput placeholder={`Amount`} onChange={handleInputChange(setAmount)} className='' />
@@ -541,17 +532,17 @@ fetch('/api/record-lp-airdrop', {
           <div className="flex items-center space-x-3 mt-4">
         <Text>Amount in Total</Text>
         <Switch checked={perHolderAmount} onChange={() => setPerHolderAmount(!perHolderAmount)} />
-        <Text>Amount per Holder</Text>
+        <Text>Amount per Address</Text>
         </div>
         <Divider className='font-bold mt-12 font-bold'>Step 3: Check details</Divider>
         <div className="flex flex-col items-center justify-center space-y-2 md:flex-row md:space-y-0 md:space-x-4 mb-2">
     <Text className="text-center">
         <span className="font-bold">Total Cost:</span> {formatArc200Amount((isNaN(totalCost) ? 0 : totalCost / multiplicationFactor), tokenDecimals)} {tokenInfo.name}
     </Text>
-    <Text className="text-center"><span className="font-bold">LP Providers:</span> {isNaN(lpHolders.size) ? 0 : lpHolders.size}
+    <Text className="text-center"><span className="font-bold">Address Entries:</span> {isNaN(addresses.length) ? 0 : addresses.length}
                         </Text>
     <Text className="text-center">
-        <span className="font-bold">Amount per Provider:</span> {formatArc200Amount((isNaN(amountPerHolderNFT) ? 0 : amountPerHolderNFT / multiplicationFactor), tokenDecimals)} {tokenInfo.name}
+        <span className="font-bold">Amount per Address:</span> {formatArc200Amount((isNaN(amountPerHolderNFT) ? 0 : amountPerHolderNFT / multiplicationFactor), tokenDecimals)} {tokenInfo.name}
     </Text>
     <Text className="text-center">
         <span className="font-bold">Transaction / Box Fees:</span> {formatVoiAmount(isNaN(totalFees) ? 0 : totalFees)} VOI
@@ -586,4 +577,4 @@ fetch('/api/record-lp-airdrop', {
   );
 };
 
-export default SendViaLPHolderComponent;
+export default SendViaCSVListComponent;

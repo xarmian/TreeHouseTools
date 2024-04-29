@@ -3,7 +3,7 @@ import type { FC } from "react";
 import { useEffect, useState } from "react";
 import { Text } from "@tremor/react";
 import { Link, useLocation } from "react-router-dom";
-import {HiCamera, HiOutlinePaperAirplane, HiPaperAirplane } from "react-icons/hi";
+import {HiCamera, HiFire, HiOutlinePaperAirplane, HiPaperAirplane } from "react-icons/hi";
 //import kittysleep from '../assets/kitty_sleep.gif'
 
 interface ExampleSidebarProps {
@@ -106,6 +106,13 @@ const ExampleSidebar: FC<ExampleSidebarProps> = function ({ isSidebarOpen }) {
                           >
                               Send VOI
                           </Sidebar.Item>
+                          <Sidebar.Item  as={Link}
+                              to="/arc-200-csv-airdrop"
+                              icon={HiPaperAirplane}
+                              className={"/arc-200-csv-airdrop" === currentPage ? "bg-gray-700" : ""}
+                          >
+                              Send ARC - 200
+                          </Sidebar.Item>
                       </Sidebar.ItemGroup>
                       <Sidebar.ItemGroup>
                       <Text className="mb-2 ml-1">Snapshots:</Text>
@@ -130,6 +137,16 @@ const ExampleSidebar: FC<ExampleSidebarProps> = function ({ isSidebarOpen }) {
                           >
                               LP Token 
                           </Sidebar.Item>    
+                          </Sidebar.ItemGroup>
+                          <Sidebar.ItemGroup>
+                      <Text className="mb-2 ml-1">Burning:</Text>
+                          <Sidebar.Item  as={Link}
+                              to="/burn-nft"
+                              icon={HiFire}
+                              className={"/burn-nft" === currentPage ? "bg-gray-700" : ""}
+                          >
+                              Burn NFT
+                          </Sidebar.Item>   
                           </Sidebar.ItemGroup>
                      </Sidebar.Items>
                 </div>

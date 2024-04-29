@@ -50,26 +50,38 @@ const SendViaArc200Component: React.FC = () => {
   const [lpTokens] = useState<LPToken[]>([
     { name: 'VIA', id: '6779767', decimals: 6 },
     { name: 'PIX', id: '29178793', decimals: 3 },
+    { name: 'PIX v2', id: '40427802', decimals: 3 },
     { name: 'GRVB', id: '29136823', decimals: 0 },
+    { name: 'GRVB v2', id: '40427797', decimals: 0 },
     { name: 'ROCKET', id: '29204384', decimals: 7 },
+    { name: 'ROCKET v2', id: '40427805', decimals: 7 },
     { name: 'JG3', id: '6795456', decimals: 8 },
+    { name: 'JG3 v2', id: '40427779', decimals: 8 },
     { name: 'Rewards', id: '23214349', decimals: 2 },
     { name: 'Tacos', id: '6795477', decimals: 0 },
+    { name: 'Tacos v2', id: '40427782', decimals: 0 },
     { name: 'wVOI', id: '24590664', decimals: 6 },
     { name: 'VRC200', id: '6778021', decimals: 8 },
+    { name: 'VRC200 v2', id: '40425710', decimals: 8 },
   ]);
 
   
   const tokenOptions = [
     { name: 'VIA', id: '6779767', decimals: 6 },
     { name: 'PIX', id: '29178793', decimals: 3 },
+    { name: 'PIX v2', id: '40427802', decimals: 3 },
     { name: 'GRVB', id: '29136823', decimals: 0 },
+    { name: 'GRVB v2', id: '40427797', decimals: 0 },
     { name: 'ROCKET', id: '29204384', decimals: 7 },
+    { name: 'ROCKET v2', id: '40427805', decimals: 7 },
     { name: 'JG3', id: '6795456', decimals: 8 },
+    { name: 'JG3 v2', id: '40427779', decimals: 8 },
     { name: 'Rewards', id: '23214349', decimals: 2 },
     { name: 'Tacos', id: '6795477', decimals: 0 },
+    { name: 'Tacos v2', id: '40427782', decimals: 0 },
     { name: 'wVOI', id: '24590664', decimals: 6 },
     { name: 'VRC200', id: '6778021', decimals: 8 },
+    { name: 'VRC200 v2', id: '40425710', decimals: 8 },
   ];
 
   const handleTokenChange = (selectedTokenId) => {

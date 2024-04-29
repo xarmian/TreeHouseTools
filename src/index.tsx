@@ -17,6 +17,8 @@ import AirdropArc200HoldersPage from "./pages/AirdropARC200Holders";
 import AirdropViaArc200HolderPage from "./pages/AirdropViaARC200Holders";
 import AirdropViaLPHolderPage from "./pages/AirdropViaLPHolders";
 import AirdropCSVPage from "./pages/AirdropCSVList";
+import AirdropViaCSVListPage from "./pages/AirdropViaCSVList";
+import NFTBurnPage from "./pages/NFTBurn";
 
 const App = () => {
   const providers = useInitializeProviders({
@@ -41,12 +43,14 @@ const App = () => {
           <Route path="/lp-airdrop" element={<AirdropLPPage />}/>
           <Route path="/token-airdrop" element={<AirdropArc200HoldersPage />}/>
           <Route path="/csv-airdrop" element={<AirdropCSVPage />}/>
+          <Route path="/arc-200-csv-airdrop" element={<AirdropViaCSVListPage />}/>
           <Route path="/arc200-collection-airdrop" element={<AirdropViaPage />}/>
           <Route path="/arc200-token-airdrop" element={<AirdropViaArc200HolderPage />}/>
           <Route path="/arc200-lp-airdrop" element={<AirdropViaLPHolderPage />}/>
           <Route path="/collection-snapshot" element={<NFTSnapshotPage />}/>
           <Route path="/arc200-snapshot" element={<Arc200SnapshotPage />}/>
           <Route path="/lp-snapshot" element={<LPSnapshotPage />}/>
+          <Route path="/burn-nft" element={<NFTBurnPage />}/>
         </Routes>
       </BrowserRouter>
       </NextUIProvider>
