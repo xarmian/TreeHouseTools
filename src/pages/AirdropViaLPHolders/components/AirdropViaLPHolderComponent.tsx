@@ -527,7 +527,7 @@ const SendViaLPHolderComponent: React.FC = () => {
         },
         body: JSON.stringify({
           sender: activeAccount.address,
-          network: "testnet",
+          network: "mainnet",
           tokenId: tokenInfo.id,
           tokenName: tokenInfo.name,
           tokenDecimals: tokenInfo.decimals,

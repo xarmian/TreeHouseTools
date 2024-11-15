@@ -196,7 +196,7 @@ const SendAlgoComponent: React.FC = () => {
       }
 
       const apiData = {
-        network: "testnet",
+        network: "mainnet",
         sender: activeAccount.address,
         tokenId: 0,
         tokenName: "VOI",

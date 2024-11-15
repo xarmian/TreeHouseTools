@@ -167,7 +167,7 @@ const SendNFTComponent: React.FC = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          network: "testnet",
+          network: "mainnet",
           sender: activeAccount.address,
           collection: contractId.toString(),
           tokenId: tokenid.toString(),
