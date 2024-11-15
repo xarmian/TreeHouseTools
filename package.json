@@ -18,6 +18,7 @@
     "yarn": ">= 1"
   },
   "dependencies": {
+    "@agoralabs-sh/avm-web-provider": "^1.7.0",
     "@emotion/react": "^11.11.3",
     "@emotion/styled": "^11.11.0",
     "@headlessui/react": "^1.7.18",
@@ -28,7 +29,8 @@
     "@remixicon/react": "^4.1.1",
     "@tailwindcss/forms": "^0.5.7",
     "@tremor/react": "^3.13.4",
-    "@txnlab/use-wallet": "^2.7.0",
+    "@txnlab/use-wallet": "^3.10.0",
+    "@txnlab/use-wallet-react": "^3.10.0",
     "algosdk": "^2.7.0",
     "apexcharts": "^3.36.3",
     "axios": "^1.6.7",
@@ -63,7 +65,7 @@
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
     "tailwind-merge": "^2.2.1",
-    "ulujs": "^0.2.19"
+    "ulujs": "^0.11.16"
   },
   "devDependencies": {
     "@types/canvas-confetti": "^1.6.4",
