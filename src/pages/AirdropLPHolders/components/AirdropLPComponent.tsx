@@ -49,7 +49,7 @@ const handleTxIdClick = (txId) => {
 };
 
 const AirdropLPComponent: React.FC = () => {
-  const { activeAccount, signTransactions, sendTransactions } = useWallet();
+  const { activeAccount, signTransactions } = useWallet();
   const [tokenId, setTokenId] = useState<string>("");
   const [lpTokens] = useState<LPToken[]>([
     { name: "Nomadex VOI / VIA", id: "27705276", decimals: 6 },
@@ -166,7 +166,9 @@ const AirdropLPComponent: React.FC = () => {
         const binaryTxns = txns.map((txn) => txn.toByte());
 
         const signedTxns = await signTransactions(binaryTxns);
-        const sendTxnResponse = await sendTransactions(signedTxns);
+        const sendTxnResponse = await algodClient
+          .sendRawTransaction(signedTxns)
+          .do();
         setTxIds((prev) => [...prev, sendTxnResponse.txId]);
         setSignedGroups((prev) => prev + 1);
         setSignedTransactions((prev) => prev + txns.length);

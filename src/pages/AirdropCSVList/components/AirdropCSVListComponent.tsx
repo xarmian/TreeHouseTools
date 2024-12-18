@@ -25,7 +25,7 @@ import { formatVoiAmount, formatAddress } from "../../../utils/formatting";
 import { fetchAccountInfo } from "../../../utils/api";
 
 const AirdropCSVComponent: React.FC = () => {
-  const { activeAccount, signTransactions, sendTransactions } = useWallet();
+  const { activeAccount, signTransactions } = useWallet();
   const [amount, setAmount] = useState<string>("");
   const [perHolderAmount, setPerHolderAmount] = useState<boolean>(false);
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
@@ -149,7 +149,9 @@ const AirdropCSVComponent: React.FC = () => {
         const binaryTxns = txns.map((txn) => txn.toByte());
 
         const signedTxns = await signTransactions(binaryTxns);
-        const sendTxnResponse = await sendTransactions(signedTxns);
+        const sendTxnResponse = await algodClient
+          .sendRawTransaction(signedTxns)
+          .do();
         setTxIds((prev) => [...prev, sendTxnResponse.txId]);
         setSignedGroups((prev) => prev + 1);
         setSignedTransactions((prev) => prev + txns.length);

@@ -49,7 +49,7 @@ interface HolderData {
 }
 
 const SendViaArc200Component: React.FC = () => {
-  const { activeAccount, signTransactions, sendTransactions } = useWallet();
+  const { activeAccount, signTransactions } = useWallet();
   const [builder, setBuilder] = useState<{ arc200?: any }>({});
   const [perHolderAmount, setPerHolderAmount] = useState<boolean>(false);
   const [amount, setAmount] = useState<string>("");
@@ -504,7 +504,9 @@ const SendViaArc200Component: React.FC = () => {
           (txn) => new Uint8Array(Buffer.from(txn, "base64"))
         );
         const signedTxns = await signTransactions(binaryTxns);
-        const sendTxnResponse = await sendTransactions(signedTxns);
+        const sendTxnResponse = await algodClient
+          .sendRawTransaction(signedTxns)
+          .do();
         console.log(
           `Group sent successfully, Transaction ID: ${sendTxnResponse.txId}`
         );

@@ -31,7 +31,7 @@ const formatAddress = (address: string): string =>
     : address;
 
 const SendNFTComponent: React.FC = () => {
-  const { activeAccount, signTransactions, sendTransactions } = useWallet();
+  const { activeAccount, signTransactions } = useWallet();
   const [receiverAddress, setReceiverAddress] = useState<string>("");
   const [nftId, setNftId] = useState<string>("");
   const [nfts, setNfts] = useState<
@@ -150,7 +150,9 @@ const SendNFTComponent: React.FC = () => {
         );
       }
 
-      const sendTxnResponse = await sendTransactions(signedTxns);
+      const sendTxnResponse = await algodClient
+        .sendRawTransaction(signedTxns)
+        .do();
       const txId = sendTxnResponse.txId;
 
       setTxIdState(txId);

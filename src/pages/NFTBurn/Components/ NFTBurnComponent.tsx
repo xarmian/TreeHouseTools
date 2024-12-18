@@ -29,7 +29,7 @@ const formatAddress = (address: string): string =>
     : address;
 
 const NFTBurnComponent: React.FC = () => {
-  const { activeAccount, signTransactions, sendTransactions } = useWallet();
+  const { activeAccount, signTransactions } = useWallet();
   const [nftId, setNftId] = useState<string>("");
   const [nfts, setNfts] = useState<
     { contractId: number; tokenId: number; metadata: string }[]
@@ -144,7 +144,9 @@ const NFTBurnComponent: React.FC = () => {
         );
       }
 
-      const sendTxnResponse = await sendTransactions(signedTxns);
+      const sendTxnResponse = await algodClient
+        .sendRawTransaction(signedTxns)
+        .do();
       const txId = sendTxnResponse.txId;
 
       setTxIdState(txId);

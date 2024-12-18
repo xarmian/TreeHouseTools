@@ -39,7 +39,7 @@ const handleTxIdClick = (txId) => {
 };
 
 const SendAlgoComponent: React.FC = () => {
-  const { activeAccount, signTransactions, sendTransactions } = useWallet();
+  const { activeAccount, signTransactions } = useWallet();
   const [collectionId, setCollectionId] = useState<string>("");
   const [collections, setCollections] = useState<
     { contractId: number; name: string }[]
@@ -92,10 +92,10 @@ const SendAlgoComponent: React.FC = () => {
         const projectsData = await fetchProjects();
         const uniqueProjects = Array.from(
           new Map(
-            projectsData.map((project) => [project.applicationID, project])
+            projectsData.map((project: any) => [project.applicationID, project])
           ).values()
         );
-        const formattedProjects = uniqueProjects.map((project) => ({
+        const formattedProjects = uniqueProjects.map((project: any) => ({
           contractId: project.applicationID,
           name: project.title,
         }));
@@ -186,7 +186,9 @@ const SendAlgoComponent: React.FC = () => {
         const binaryTxns = txns.map((txn) => txn.toByte());
 
         const signedTxns = await signTransactions(binaryTxns);
-        const sendTxnResponse = await sendTransactions(signedTxns);
+        const sendTxnResponse = await algodClient
+          .sendRawTransaction(signedTxns)
+          .do();
         setTxIds((prev) => [...prev, sendTxnResponse.txId]);
         setSignedGroups((prev) => prev + 1);
         setSignedTransactions((prev) => prev + txns.length);

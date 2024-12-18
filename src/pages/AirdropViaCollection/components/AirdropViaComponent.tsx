@@ -219,10 +219,10 @@ const SendViaComponent: React.FC = () => {
         const projectsData = await fetchProjects();
         const uniqueProjects = Array.from(
           new Map(
-            projectsData.map((project) => [project.applicationID, project])
+            projectsData.map((project: any) => [project.applicationID, project])
           ).values()
         );
-        const formattedProjects = uniqueProjects.map((project) => ({
+        const formattedProjects = uniqueProjects.map((project: any) => ({
           contractId: project.applicationID,
           name: project.title,
         }));

@@ -46,7 +46,7 @@ const handleTxIdClick = (txId) => {
 };
 
 const AirdropArc200HoldersComponent: React.FC = () => {
-  const { activeAccount, signTransactions, sendTransactions } = useWallet();
+  const { activeAccount, signTransactions } = useWallet();
   const [tokenId, setTokenId] = useState<string>("");
   const [lpTokens] = useState<LPToken[]>([
     { name: "VIA", id: "6779767", decimals: 6 },
@@ -167,7 +167,9 @@ const AirdropArc200HoldersComponent: React.FC = () => {
         const binaryTxns = txns.map((txn) => txn.toByte());
 
         const signedTxns = await signTransactions(binaryTxns);
-        const sendTxnResponse = await sendTransactions(signedTxns);
+        const sendTxnResponse = await algodClient
+          .sendRawTransaction(signedTxns)
+          .do();
         setTxIds((prev) => [...prev, sendTxnResponse.txId]);
         setSignedGroups((prev) => prev + 1);
         setSignedTransactions((prev) => prev + txns.length);
