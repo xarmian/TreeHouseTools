@@ -39,7 +39,7 @@ const handleTxIdClick = (txId) => {
 };
 
 const SendViaComponent: React.FC = () => {
-  const { activeAccount, signTransactions, sendTransactions } = useWallet();
+  const { activeAccount, signTransactions } = useWallet();
   const [builder, setBuilder] = useState<{ arc200?: any }>({});
   const [collectionId, setCollectionId] = useState<string>("");
   const [distributeUnique, setDistributeUnique] = useState<boolean>(true);
@@ -65,28 +65,49 @@ const SendViaComponent: React.FC = () => {
     decimals: 6,
     name: "VIA",
   });
+  const [tokenOptions, setTokenOptions] = useState<
+    { name: string; id: string; decimals: number }[]
+  >([]);
   const [ci, setCi] = useState<any>(null);
   const bottomSwitchText = distributeUnique
     ? "Amount per holder"
     : "Amount per NFT";
 
-  const tokenOptions = [
-    { name: "VIA", id: "6779767", decimals: 6 },
-    { name: "PIX", id: "29178793", decimals: 3 },
-    { name: "PIX v2", id: "40427802", decimals: 3 },
-    { name: "GRVB", id: "29136823", decimals: 0 },
-    { name: "GRVB v2", id: "40427797", decimals: 0 },
-    { name: "ROCKET", id: "29204384", decimals: 7 },
-    { name: "ROCKET v2", id: "40427805", decimals: 7 },
-    { name: "JG3", id: "6795456", decimals: 8 },
-    { name: "JG3 v2", id: "40427779", decimals: 8 },
-    { name: "Rewards", id: "23214349", decimals: 2 },
-    { name: "Tacos", id: "6795477", decimals: 0 },
-    { name: "Tacos v2", id: "40427782", decimals: 0 },
-    { name: "wVOI", id: "24590664", decimals: 6 },
-    { name: "VRC200", id: "6778021", decimals: 8 },
-    { name: "VRC200 v2", id: "40425710", decimals: 8 },
-  ];
+  useEffect(() => {
+    const fetchTokens = async () => {
+      try {
+        const response = await fetch(
+          "https://mainnet-idx.nautilus.sh/nft-indexer/v1/arc200/balances?accountId=" +
+            activeAccount.address
+        );
+        const data = await response.json();
+        const formattedTokens = await Promise.all(
+          data.balances.map(async (token) => {
+            const infoRequest = await fetch(
+              "https://mainnet-idx.nautilus.sh/nft-indexer/v1/arc200/tokens?contractId=" +
+                token.contractId
+            );
+            const infoData = await infoRequest.json();
+            console.log(infoData);
+            return {
+              name: infoData.tokens[0].name,
+              id: token.contractId.toString(),
+              decimals: infoData.tokens[0].decimals,
+            };
+          })
+        );
+
+        setTokenOptions(formattedTokens);
+        // Set default token if available
+        if (formattedTokens.length > 0) {
+          setTokenInfo(formattedTokens[0]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch ARC-200 tokens:", error);
+      }
+    };
+    fetchTokens();
+  }, []);
 
   const handleTokenChange = (selectedTokenId) => {
     const selectedToken = tokenOptions.find(
@@ -311,7 +332,7 @@ const SendViaComponent: React.FC = () => {
   }, [activeAccount, tokenInfo.id]);
 
   useEffect(() => {
-    if (activeAccount && activeAccount.address) {
+    if (activeAccount && activeAccount.address && tokenOptions.length > 0) {
       const arc200token = Number(tokenInfo.id);
       const tokenDecimals =
         tokenOptions.find((token) => Number(token.id) === arc200token)
@@ -512,7 +533,11 @@ const SendViaComponent: React.FC = () => {
           (txn) => new Uint8Array(Buffer.from(txn, "base64"))
         );
         const signedTxns = await signTransactions(binaryTxns);
-        const sendTxnResponse = await sendTransactions(signedTxns);
+
+        const sendTxnResponse = await algodClient
+          .sendRawTransaction(signedTxns)
+          .do();
+
         console.log(
           `Group sent successfully, Transaction ID: ${sendTxnResponse.txId}`
         );
