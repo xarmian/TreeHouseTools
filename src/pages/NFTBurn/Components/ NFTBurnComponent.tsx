@@ -223,19 +223,33 @@ const NFTBurnComponent: React.FC = () => {
             className=""
             onValueChange={handleSearchSelectChange}
           >
-            {nfts.map((nft) => {
-              const metadata = JSON.parse(nft.metadata);
-              const tokenName = metadata.name;
+            {nfts
+              .map((nft) => {
+                try {
+                  const metadata = JSON.parse(nft.metadata);
+                  const tokenName = metadata.name;
 
-              return (
-                <SearchSelectItem
-                  key={`${nft.contractId}-${nft.tokenId}`}
-                  value={`${nft.contractId}-${nft.tokenId}`}
-                >
-                  {tokenName}
-                </SearchSelectItem>
-              );
-            })}
+                  if (!tokenName) {
+                    return null;
+                  }
+
+                  return (
+                    <SearchSelectItem
+                      key={`${nft.contractId}-${nft.tokenId}`}
+                      value={`${nft.contractId}-${nft.tokenId}`}
+                    >
+                      {tokenName}
+                    </SearchSelectItem>
+                  );
+                } catch (error) {
+                  console.warn(
+                    `Invalid metadata for NFT ${nft.contractId}-${nft.tokenId}:`,
+                    error
+                  );
+                  return null;
+                }
+              })
+              .filter(Boolean)}
           </SearchSelect>
           <Button
             size="lg"

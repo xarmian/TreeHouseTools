@@ -1,4 +1,3 @@
-import type { ChangeEvent } from "react";
 import { useState, useEffect } from "react";
 import {
   Card,
@@ -7,7 +6,6 @@ import {
   Text,
   Metric,
   Divider,
-  TextInput,
   DialogPanel,
   Dialog,
   Title,
@@ -20,6 +18,7 @@ import confetti from "canvas-confetti";
 import { useWallet } from "@txnlab/use-wallet-react";
 import { algodClient, algodIndexer } from "../../../utils/algod";
 import brush from "../../../assets/brush.png";
+import EnvoiAddressSearch from "../../../components/EnvoiAddressSearch";
 
 if (typeof window !== "undefined" && !window.global) {
   window.global = window;
@@ -95,12 +94,6 @@ const SendNFTComponent: React.FC = () => {
       fetchAccountInfo();
     }
   }, [activeAccount, algodClient]);
-
-  const handleInputChange =
-    (setter: React.Dispatch<React.SetStateAction<string>>) =>
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setter(event.target.value);
-    };
 
   const handleSendNFT = async () => {
     if (!activeAccount || !receiverAddress || !nftId) {
@@ -226,9 +219,9 @@ const SendNFTComponent: React.FC = () => {
           <Divider className="font-bold">
             Step 1: Enter Receiver's Address
           </Divider>
-          <TextInput
-            placeholder="Receiver's Address"
-            onChange={handleInputChange(setReceiverAddress)}
+          <EnvoiAddressSearch
+            onAddressSelect={setReceiverAddress}
+            placeholder="Search by enVoi name or enter address"
           />
           <Divider className="mt-8 font-bold">Step 2: Select NFT</Divider>
           <SearchSelect
@@ -236,19 +229,33 @@ const SendNFTComponent: React.FC = () => {
             className=""
             onValueChange={handleSearchSelectChange}
           >
-            {nfts.map((nft) => {
-              const metadata = JSON.parse(nft.metadata);
-              const tokenName = metadata.name;
+            {nfts
+              .map((nft) => {
+                try {
+                  const metadata = JSON.parse(nft.metadata);
+                  const tokenName = metadata.name;
 
-              return (
-                <SearchSelectItem
-                  key={`${nft.contractId}-${nft.tokenId}`}
-                  value={`${nft.contractId}-${nft.tokenId}`}
-                >
-                  {tokenName}
-                </SearchSelectItem>
-              );
-            })}
+                  if (!tokenName) {
+                    return null;
+                  }
+
+                  return (
+                    <SearchSelectItem
+                      key={`${nft.contractId}-${nft.tokenId}`}
+                      value={`${nft.contractId}-${nft.tokenId}`}
+                    >
+                      {tokenName}
+                    </SearchSelectItem>
+                  );
+                } catch (error) {
+                  console.warn(
+                    `Invalid metadata for NFT ${nft.contractId}-${nft.tokenId}:`,
+                    error
+                  );
+                  return null;
+                }
+              })
+              .filter(Boolean)}
           </SearchSelect>
           <Button
             size="lg"

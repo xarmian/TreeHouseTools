@@ -107,10 +107,23 @@ const NFTSnapshotComponent: React.FC = () => {
             projectsData.map((project: any) => [project.applicationID, project])
           ).values()
         );
-        const formattedProjects = uniqueProjects.map((project: any) => ({
-          contractId: project.applicationID,
-          name: project.title,
-        }));
+        const formattedProjects = uniqueProjects
+          .map((project: any) => {
+            try {
+              if (!project.applicationID || !project.title) {
+                console.warn(`Invalid project data:`, project);
+                return null;
+              }
+              return {
+                contractId: project.applicationID,
+                name: project.title || `Collection #${project.applicationID}`,
+              };
+            } catch (error) {
+              console.warn(`Error processing project:`, error);
+              return null;
+            }
+          })
+          .filter(Boolean);
         setCollections(formattedProjects);
       } catch (error) {
         console.error("Failed to fetch projects:", error);
@@ -258,8 +271,9 @@ const NFTSnapshotComponent: React.FC = () => {
   useEffect(() => {
     const currentUTCHour = new Date().getUTCHours();
     const currentUTCMinute = new Date().getUTCMinutes();
-    const isTodaySelected =
-      selectedDate.toDateString() === todayUTC.toDateString();
+    const isTodaySelected = selectedDate
+      ? selectedDate.toDateString() === todayUTC.toDateString()
+      : false;
 
     const filteredTimeOptions = Array.from({ length: 24 * 12 }, (_, i) => {
       const hour = Math.floor(i / 12);
@@ -306,7 +320,7 @@ const NFTSnapshotComponent: React.FC = () => {
                 key={collection.contractId}
                 value={String(collection.contractId)}
               >
-                {collection.name}
+                {collection.name || `Collection #${collection.contractId}`}
               </SearchSelectItem>
             ))}
           </SearchSelect>
