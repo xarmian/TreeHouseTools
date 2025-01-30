@@ -56,105 +56,102 @@ const SendViaCSVListComponent: React.FC = () => {
   const [balance, setBalance] = useState(0);
   const [voiBalance, setVoiBalance] = useState(0);
   const [tokenInfo, setTokenInfo] = useState({
-    id: "6779767",
+    id: "",
     decimals: 6,
-    name: "VIA",
+    name: "",
   });
   const [ci, setCi] = useState<any>(null);
+  const [tokenId, setTokenId] = useState<string>("");
+  const [tokenOptions, setTokenOptions] = useState<
+    { name: string; id: string; decimals: number }[]
+  >([]);
 
-  const tokenOptions = [
-    { name: "VIA", id: "6779767", decimals: 6 },
-    { name: "PIX", id: "29178793", decimals: 3 },
-    { name: "PIX v2", id: "40427802", decimals: 3 },
-    { name: "GRVB", id: "29136823", decimals: 0 },
-    { name: "GRVB v2", id: "40427797", decimals: 0 },
-    { name: "ROCKET", id: "29204384", decimals: 7 },
-    { name: "ROCKET v2", id: "40427805", decimals: 7 },
-    { name: "JG3", id: "6795456", decimals: 8 },
-    { name: "JG3 v2", id: "40427779", decimals: 8 },
-    { name: "Rewards", id: "23214349", decimals: 2 },
-    { name: "Tacos", id: "6795477", decimals: 0 },
-    { name: "Tacos v2", id: "40427782", decimals: 0 },
-    { name: "wVOI", id: "24590664", decimals: 6 },
-    { name: "VRC200", id: "6778021", decimals: 8 },
-    { name: "VRC200 v2", id: "40425710", decimals: 8 },
-  ];
+  useEffect(() => {
+    const fetchTokens = async () => {
+      if (!activeAccount) {
+        setTokenOptions([]);
+        return;
+      }
 
-  const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    if (file.type !== "text/csv") {
-      alert("Please upload a CSV file.");
-      return;
-    }
-
-    Papa.parse(file, {
-      complete: (results) => {
-        const addresses = results.data
-          .map((row) => {
-            const address = row[0].trim();
-            if (address && address.length === 58) {
-              return address;
-            } else {
-              alert(
-                "CSV format error: Each address must be exactly 58 characters long."
-              );
-              return null;
-            }
+      try {
+        const response = await fetch(
+          "https://mainnet-idx.nautilus.sh/nft-indexer/v1/arc200/balances?accountId=" +
+            activeAccount.address
+        );
+        const data = await response.json();
+        const formattedTokens = await Promise.all(
+          data.balances.map(async (token) => {
+            const infoRequest = await fetch(
+              "https://mainnet-idx.nautilus.sh/nft-indexer/v1/arc200/tokens?contractId=" +
+                token.contractId
+            );
+            const infoData = await infoRequest.json();
+            return {
+              name: infoData.tokens[0].name,
+              id: token.contractId.toString(),
+              decimals: infoData.tokens[0].decimals,
+            };
           })
-          .filter((address) => address);
-        setAddresses(addresses);
-      },
-      header: false,
-    });
-  };
+        );
+
+        setTokenOptions(formattedTokens);
+      } catch (error) {
+        console.error("Failed to fetch ARC-200 tokens:", error);
+        setTokenOptions([]);
+      }
+    };
+    fetchTokens();
+  }, [activeAccount]);
 
   const handleTokenChange = (selectedTokenId) => {
+    if (!selectedTokenId) return;
     const selectedToken = tokenOptions.find(
       (token) => token.id === selectedTokenId
     );
     if (selectedToken) {
       setTokenInfo(selectedToken);
+      setTokenId(selectedTokenId);
     }
   };
 
   useEffect(() => {
     const fetchTokensAndOwners = async () => {
+      if (!activeAccount || addresses.length === 0) return;
       setLoading(true);
       try {
         const validHolders = new Map<string, number>();
         addresses.forEach((address) => {
-          validHolders.set(address, 1); // Simulate the amount for the sake of the example
+          validHolders.set(address, 1);
         });
         setLpHolders(validHolders);
 
-        let uniqueReceivers = [...validHolders.keys()];
-
+        const uniqueReceivers = [...validHolders.keys()];
         let zeroBalanceAddresses = [];
-        console.log("Unique Receivers:", uniqueReceivers);
-        await Promise.all(
-          uniqueReceivers.map(async (addr) => {
-            const arc200token = Number(tokenInfo.id);
-            const check = new arc200(arc200token, algodClient, algodIndexer, {
-              acc: { addr: activeAccount.address, sk: new Uint8Array(0) },
-            });
-            const hasBalanceR = await check.hasBalance(
-              addr as unknown as string
-            );
 
-            if (hasBalanceR.success) {
-              const hasBalance = hasBalanceR.returnValue;
-              if (!hasBalance) {
-                zeroBalanceAddresses.push(addr);
+        if (tokenId) {
+          await Promise.all(
+            uniqueReceivers.map(async (addr) => {
+              const arc200token = Number(tokenId);
+              const check = new arc200(arc200token, algodClient, algodIndexer, {
+                acc: { addr: activeAccount.address, sk: new Uint8Array(0) },
+              });
+              const hasBalanceR = await check.hasBalance(
+                addr as unknown as string
+              );
+
+              if (hasBalanceR.success) {
+                const hasBalance = hasBalanceR.returnValue;
+                if (!hasBalance) {
+                  zeroBalanceAddresses.push(addr);
+                }
               }
-            }
-          })
-        );
+            })
+          );
+        }
 
         zeroBalanceAddresses = [...new Set(zeroBalanceAddresses)];
-        console.log("Zero balance addressess:", zeroBalanceAddresses);
-        uniqueReceivers = uniqueReceivers.filter(
+        console.log("Zero balance addresses:", zeroBalanceAddresses);
+        const holderAddresses = uniqueReceivers.filter(
           (addr) => !zeroBalanceAddresses.includes(addr)
         );
 
@@ -162,16 +159,18 @@ const SendViaCSVListComponent: React.FC = () => {
         let currentChunkIndex = -1;
         const chunkSize = 11;
 
-        uniqueReceivers.forEach((receiver, index) => {
+        holderAddresses.forEach((receiver, index) => {
           if (index % chunkSize === 0) {
             adjustedChunks.push([]);
             currentChunkIndex += 1;
+
             if (zeroBalanceAddresses.length > 0) {
               adjustedChunks[currentChunkIndex].push(
                 zeroBalanceAddresses.shift()
               );
             }
           }
+
           if (adjustedChunks[currentChunkIndex].length < chunkSize) {
             adjustedChunks[currentChunkIndex].push(receiver);
           }
@@ -181,38 +180,84 @@ const SendViaCSVListComponent: React.FC = () => {
           adjustedChunks.push([zeroBalanceAddress]);
         });
 
-        console.log("Pre-processed chunks:", adjustedChunks);
+        // Calculate initial fee estimates
+        const BALANCE_BOX_COST = 28500;
+        let totalBoxCost = 0;
+        let totalTxCount = 0;
 
-        let totalFees = 0;
         adjustedChunks.forEach((chunk) => {
-          const baseFeePerAddress = 0.001;
-          const baseFeePerChunk = 0.002;
-          const additionalFeeForZeroBalance = 0.0285;
-
-          const isZeroBalanceChunk = chunk.some((addr) =>
+          const containsZeroBalanceAddress = chunk.some((addr) =>
             zeroBalanceAddresses.includes(addr)
           );
-          const chunkFee =
-            chunk.length * baseFeePerAddress +
-            baseFeePerChunk +
-            (isZeroBalanceChunk ? additionalFeeForZeroBalance : 0.0000001);
 
-          totalFees += chunkFee;
+          if (containsZeroBalanceAddress) {
+            totalBoxCost += BALANCE_BOX_COST;
+          }
+          totalTxCount += chunk.length;
         });
 
-        setTotalFees(totalFees);
+        // Calculate and update total fees (0.001 VOI per transaction + box costs)
+        const totalTxnFees = totalTxCount * 0.001;
+        const estimatedTotalFees = totalTxnFees + totalBoxCost / 1_000_000;
+        setTotalFees(estimatedTotalFees);
+        setTotalGroups(adjustedChunks.length);
+        setTotalTransactions(totalTxCount);
       } catch (error) {
-        console.error("Failed to fetch tokens and owners:", error);
+        console.error("Failed to process addresses:", error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchTokensAndOwners();
-  }, [File, tokenInfo.id]);
+  }, [addresses, tokenId, activeAccount]);
 
   useEffect(() => {
-    if (activeAccount) {
+    if (activeAccount && activeAccount.address) {
+      const arc200token = Number(tokenId);
+
+      if (arc200token === 0) return;
+
+      const cid = new arc200(arc200token, algodClient, algodIndexer, {
+        acc: { addr: activeAccount.address, sk: new Uint8Array(0) },
+      });
+
+      const fetchAccountInfo = async () => {
+        try {
+          const accountInfo = await algodClient
+            .accountInformation(activeAccount.address)
+            .do();
+
+          if (accountInfo && accountInfo["amount"]) {
+            setVoiBalance(accountInfo["amount"]);
+          }
+
+          const balanceResponse = await cid.arc200_balanceOf(
+            activeAccount.address
+          );
+          if (balanceResponse.success) {
+            let formattedBalance: React.SetStateAction<number>;
+            if (tokenInfo.decimals === 0) {
+              formattedBalance = Number(balanceResponse.returnValue);
+            } else {
+              const balanceBigInt = BigInt(balanceResponse.returnValue);
+              const divisor = BigInt(10 ** tokenInfo.decimals);
+              formattedBalance = Number(balanceBigInt) / Number(divisor);
+            }
+
+            setBalance(formattedBalance);
+          }
+        } catch (error) {
+          console.error("Failed to fetch account information:", error);
+        }
+      };
+
+      fetchAccountInfo();
+    }
+  }, [activeAccount, tokenId, tokenInfo.decimals]);
+
+  useEffect(() => {
+    if (activeAccount && tokenId) {
       const spec = {
         name: "",
         description: "",
@@ -276,7 +321,7 @@ const SendViaCSVListComponent: React.FC = () => {
         events: [],
       };
 
-      const arc200token = Number(tokenInfo.id);
+      const arc200token = Number(tokenId);
 
       const newBuilder = {
         arc200: new CONTRACT(
@@ -303,55 +348,37 @@ const SendViaCSVListComponent: React.FC = () => {
 
       setCi(newCi);
     }
-  }, [activeAccount, tokenInfo.id]);
+  }, [activeAccount, tokenId]);
 
-  useEffect(() => {
-    if (activeAccount && activeAccount.address) {
-      const arc200token = Number(tokenInfo.id);
-      const tokenDecimals =
-        tokenOptions.find((token) => Number(token.id) === arc200token)
-          .decimals || 6;
-      const cid = new arc200(arc200token, algodClient, algodIndexer, {
-        acc: { addr: activeAccount.address, sk: new Uint8Array(0) },
-      });
+  const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files[0];
+    if (!file) return;
 
-      const fetchAccountInfo = async () => {
-        try {
-          const accountInfo = await algodClient
-            .accountInformation(activeAccount.address)
-            .do();
-
-          if (accountInfo && accountInfo["amount"]) {
-            setVoiBalance(accountInfo["amount"]);
-          }
-
-          cid
-            .arc200_balanceOf(activeAccount.address)
-            .then((res) => {
-              if (res.success) {
-                let formattedBalance: React.SetStateAction<number>;
-                if (tokenInfo.decimals === 0) {
-                  formattedBalance = Number(res.returnValue);
-                } else {
-                  const balanceBigInt = BigInt(res.returnValue);
-                  const divisor = BigInt(10 ** tokenDecimals);
-                  formattedBalance = Number(balanceBigInt) / Number(divisor);
-                }
-
-                setBalance(formattedBalance);
-              }
-            })
-            .catch((error) => {
-              console.error("Failed to fetch account information:", error);
-            });
-        } catch (error) {
-          console.error("Failed to fetch account information:", error);
-        }
-      };
-
-      fetchAccountInfo();
+    if (file.type !== "text/csv") {
+      alert("Please upload a CSV file.");
+      return;
     }
-  }, [activeAccount, algodClient, algodIndexer, signedGroups, tokenInfo.id]);
+
+    Papa.parse(file, {
+      complete: (results) => {
+        const addresses = results.data
+          .map((row) => {
+            const address = row[0].trim();
+            if (address && address.length === 58) {
+              return address;
+            } else {
+              alert(
+                "CSV format error: Each address must be exactly 58 characters long."
+              );
+              return null;
+            }
+          })
+          .filter((address) => address);
+        setAddresses(addresses);
+      },
+      header: false,
+    });
+  };
 
   const handleInputChange =
     (setter: React.Dispatch<React.SetStateAction<string>>) =>
@@ -394,7 +421,7 @@ const SendViaCSVListComponent: React.FC = () => {
       console.log("Unique Receivers:", uniqueReceivers);
       await Promise.all(
         uniqueReceivers.map(async (addr) => {
-          const arc200token = Number(tokenInfo.id);
+          const arc200token = Number(tokenId);
           const check = new arc200(arc200token, algodClient, algodIndexer, {
             acc: { addr: activeAccount.address, sk: new Uint8Array(0) },
           });
@@ -529,7 +556,7 @@ const SendViaCSVListComponent: React.FC = () => {
         body: JSON.stringify({
           sender: activeAccount.address,
           network: "mainnet",
-          tokenId: tokenInfo.id,
+          tokenId: tokenId,
           tokenName: tokenInfo.name,
           tokenDecimals: tokenInfo.decimals,
           //LP_Token: tokenId,
