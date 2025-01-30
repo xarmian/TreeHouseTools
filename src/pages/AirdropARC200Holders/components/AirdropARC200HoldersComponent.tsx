@@ -28,18 +28,8 @@ import {
   formatAddress,
   formatVoiAmount,
   truncateTxId,
+  formatArc200BalanceAmount,
 } from "../../../utils/formatting";
-
-interface LPToken {
-  name: string;
-  id: string;
-  decimals: number;
-}
-
-interface HolderData {
-  account: string;
-  amount: string;
-}
 
 const handleTxIdClick = (txId) => {
   window.open(`https://voi.observer/explorer/transaction/${txId}`, "_blank");
@@ -48,24 +38,16 @@ const handleTxIdClick = (txId) => {
 const AirdropArc200HoldersComponent: React.FC = () => {
   const { activeAccount, signTransactions } = useWallet();
   const [tokenId, setTokenId] = useState<string>("");
-  const [lpTokens] = useState<LPToken[]>([
-    { name: "VIA", id: "6779767", decimals: 6 },
-    { name: "PIX", id: "29178793", decimals: 3 },
-    { name: "PIX v2", id: "40427802", decimals: 3 },
-    { name: "GRVB", id: "29136823", decimals: 0 },
-    { name: "GRVB v2", id: "40427797", decimals: 0 },
-    { name: "ROCKET", id: "29204384", decimals: 7 },
-    { name: "ROCKET v2", id: "40427805", decimals: 7 },
-    { name: "JG3", id: "6795456", decimals: 8 },
-    { name: "JG3 v2", id: "40427779", decimals: 8 },
-    { name: "Rewards", id: "23214349", decimals: 2 },
-    { name: "Tacos", id: "6795477", decimals: 0 },
-    { name: "Tacos v2", id: "40427782", decimals: 0 },
-    { name: "wVOI", id: "24590664", decimals: 6 },
-    { name: "VRC200", id: "6778021", decimals: 8 },
-    { name: "VRC200 v2", id: "40425710", decimals: 8 },
-  ]);
+  const [tokenOptions, setTokenOptions] = useState<
+    { name: string; id: string; decimals: number }[]
+  >([]);
+  const [tokenInfo, setTokenInfo] = useState({
+    id: "",
+    decimals: 6,
+    name: "",
+  });
   const [amount, setAmount] = useState<string>("");
+  const [minBalance, setMinBalance] = useState<string>("");
   const [perHolderAmount, setPerHolderAmount] = useState<boolean>(false);
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
@@ -76,29 +58,88 @@ const AirdropArc200HoldersComponent: React.FC = () => {
   const [signedTransactions, setSignedTransactions] = useState<number>(0);
   const [lpHolders, setLpHolders] = useState<Map<string, number>>(new Map());
   const [voiBalance, setVoiBalance] = useState<number>(0);
+  const [balance, setBalance] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchTokens = async () => {
+      if (!activeAccount) return;
+
+      try {
+        const response = await fetch(
+          "https://mainnet-idx.nautilus.sh/nft-indexer/v1/arc200/balances?accountId=" +
+            activeAccount.address
+        );
+        const data = await response.json();
+        const formattedTokens = await Promise.all(
+          data.balances.map(async (token) => {
+            const infoRequest = await fetch(
+              "https://mainnet-idx.nautilus.sh/nft-indexer/v1/arc200/tokens?contractId=" +
+                token.contractId
+            );
+            const infoData = await infoRequest.json();
+            return {
+              name: infoData.tokens[0].name,
+              id: token.contractId.toString(),
+              decimals: infoData.tokens[0].decimals,
+            };
+          })
+        );
+
+        setTokenOptions(formattedTokens);
+        // Set default token if available
+        if (formattedTokens.length > 0) {
+          setTokenInfo(formattedTokens[0]);
+          setTokenId(formattedTokens[0].id);
+        }
+      } catch (error) {
+        console.error("Failed to fetch ARC-200 tokens:", error);
+      }
+    };
+    fetchTokens();
+  }, [activeAccount]);
+
+  const handleTokenChange = (selectedTokenId) => {
+    const selectedToken = tokenOptions.find(
+      (token) => token.id === selectedTokenId
+    );
+    if (selectedToken) {
+      setTokenInfo(selectedToken);
+      setTokenId(selectedTokenId);
+    }
+  };
 
   useEffect(() => {
     const loadLPandHolders = async () => {
       if (!tokenId) return;
       setLoading(true);
       try {
-        const response = await fetch(`/api/arc200-snapshot/testnet/${tokenId}`);
-        const data: HolderData[] = await response.json();
+        const response = await fetch(
+          `https://mainnet-idx.nautilus.sh/nft-indexer/v1/arc200/balances?contractId=${tokenId}&limit=1000`
+        );
+        const data = await response.json();
         const validHolders = new Map<string, number>();
-        data.forEach((holder) => {
-          const amount = parseFloat(holder.amount);
-          if (amount > 0) validHolders.set(holder.account, amount);
-        });
+
+        if (data && data.balances) {
+          data.balances.forEach((holder) => {
+            const amount = Number(holder.balance);
+            const normalizedAmount = amount / 10 ** tokenInfo.decimals;
+            const minBalanceNum = parseFloat(minBalance) || 0;
+            if (amount > 0 && normalizedAmount >= minBalanceNum) {
+              validHolders.set(holder.accountId, amount);
+            }
+          });
+        }
+
         setLpHolders(validHolders);
       } catch (error) {
-        console.error("Failed to fetch LP holders:", error);
+        console.error("Failed to fetch token holders:", error);
       } finally {
         setLoading(false);
       }
     };
 
     loadLPandHolders();
-  }, [tokenId]);
+  }, [tokenId, minBalance]);
 
   const handleInputChange =
     (setter: React.Dispatch<React.SetStateAction<string>>) =>
@@ -106,13 +147,17 @@ const AirdropArc200HoldersComponent: React.FC = () => {
       setter(event.target.value);
     };
 
+  const tokenDecimals = Number(tokenInfo.decimals);
+
   const totalCost = perHolderAmount
-    ? parseInt(amount, 10) * 1000000 * lpHolders.size
-    : parseInt(amount, 10) * 1000000;
+    ? Math.round(parseFloat(amount || "0") * 1_000_000) * lpHolders.size
+    : Math.round(parseFloat(amount || "0") * 1_000_000);
 
   const perHolderCost = perHolderAmount
-    ? parseInt(amount, 10) * 1000000
-    : (parseInt(amount, 10) * 1000000) / lpHolders.size;
+    ? Math.round(parseFloat(amount || "0") * 1_000_000)
+    : Math.floor(
+        Math.round(parseFloat(amount || "0") * 1_000_000) / lpHolders.size
+      );
 
   const handleSendAlgo = async () => {
     if (!activeAccount || !tokenId || !amount || isNaN(parseFloat(amount))) {
@@ -131,15 +176,15 @@ const AirdropArc200HoldersComponent: React.FC = () => {
     try {
       const txnGroups = [];
       const suggestedParams = await algodClient.getTransactionParams().do();
-      const Amount = parseInt(amount, 10) * 1000000;
+      const Amount = Math.round(parseFloat(amount) * 1_000_000); // VOI uses 6 decimals
       const validHolders = Array.from(lpHolders.keys());
 
       const amountPerHolder = perHolderAmount
         ? Amount
         : Math.floor(Amount / validHolders.length);
 
-      console.log("Total Amount:", Amount);
-      console.log("Amount Per Holder:", amountPerHolder);
+      console.log("Total VOI Amount:", Amount);
+      console.log("VOI Amount Per Holder:", amountPerHolder);
 
       for (let i = 0; i < validHolders.length; i += 16) {
         const txnChunk = validHolders.slice(i, i + 16).map((holder) => {
@@ -204,6 +249,15 @@ const AirdropArc200HoldersComponent: React.FC = () => {
             console.log(`Account Balance: ${accountInfo["amount"]}`);
             setVoiBalance(accountInfo["amount"]);
           }
+
+          // Fetch ARC-200 token balance if a token is selected
+          if (tokenId) {
+            const response = await fetch(
+              `https://mainnet-idx.nautilus.sh/nft-indexer/v1/arc200/balances?contractId=${tokenId}&accountId=${activeAccount.address}`
+            );
+            const data = await response.json();
+            setBalance(Number(data?.balance ?? 0));
+          }
         } catch (error) {
           console.error("Failed to fetch account information:", error);
         }
@@ -211,7 +265,7 @@ const AirdropArc200HoldersComponent: React.FC = () => {
     };
 
     loadAccountInfo();
-  }, [activeAccount]);
+  }, [activeAccount, tokenId]);
 
   return (
     <>
@@ -249,14 +303,25 @@ const AirdropArc200HoldersComponent: React.FC = () => {
           <SearchSelect
             placeholder="Select Token"
             className=""
-            onValueChange={setTokenId}
+            onValueChange={handleTokenChange}
+            disabled={!activeAccount}
           >
-            {lpTokens.map((token) => (
-              <SearchSelectItem key={token.id} value={String(token.id)}>
+            {tokenOptions.map((token) => (
+              <SearchSelectItem key={token.id} value={token.id}>
                 {token.name}
               </SearchSelectItem>
             ))}
           </SearchSelect>
+          <TextInput
+            placeholder={`Minimum ${
+              tokenInfo.name || "Token"
+            } Balance to Include (optional)`}
+            onChange={handleInputChange(setMinBalance)}
+            className="mt-4"
+          />
+          <Text className="mt-2 text-sm text-gray-600">
+            Only include holders with at least this many tokens in the airdrop
+          </Text>
           <Divider className="mt-12 font-bold">
             Step 2: Specify amount to send
           </Divider>
@@ -276,26 +341,18 @@ const AirdropArc200HoldersComponent: React.FC = () => {
           <Divider className="mt-12 font-bold">Step 3: Check details</Divider>
           <div className="mb-2 flex flex-col items-center justify-center space-y-2 md:flex-row md:space-x-4 md:space-y-0">
             <Text className="text-center">
-              <span className="font-bold">Total Cost:</span>{" "}
-              {formatVoiAmount(isNaN(totalCost) ? 0 : totalCost / 1000000)} VOI
+              <span className="font-bold">Total VOI Cost:</span>{" "}
+              {formatVoiAmount(isNaN(totalCost) ? 0 : totalCost / 1_000_000)}
             </Text>
             <Text className="text-center">
-              <span className="font-bold">Token Holders:</span>{" "}
+              <span className="font-bold">{tokenInfo.name} Holders:</span>{" "}
               {isNaN(lpHolders.size) ? 0 : lpHolders.size}
             </Text>
             <Text className="text-center">
-              <span className="font-bold">Amount per Holder:</span>{" "}
+              <span className="font-bold">VOI per Holder:</span>{" "}
               {formatVoiAmount(
-                isNaN(perHolderCost) ? 0 : perHolderCost / 1000000
-              )}{" "}
-              VOI
-            </Text>
-            <Text className="text-center">
-              <span className="font-bold">Transaction Fees:</span>{" "}
-              {formatVoiAmount(
-                isNaN(lpHolders.size) ? 0 : lpHolders.size * 0.001
-              )}{" "}
-              VOI
+                isNaN(perHolderCost) ? 0 : perHolderCost / 1_000_000
+              )}
             </Text>
           </div>
           <Button
@@ -306,10 +363,11 @@ const AirdropArc200HoldersComponent: React.FC = () => {
             loading={loading}
             disabled={
               loading ||
-              lpTokens.length === 0 ||
+              tokenOptions.length === 0 ||
               totalCost === 0 ||
               !amount ||
-              totalCost >= voiBalance - 5000000
+              !tokenId ||
+              totalCost > voiBalance
             }
           >
             Send it!

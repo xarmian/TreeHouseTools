@@ -37,17 +37,6 @@ const handleTxIdClick = (txId) => {
   window.open(`https://voi.observer/explorer/transaction/${txId}`, "_blank");
 };
 
-interface LPToken {
-  name: string;
-  id: string;
-  decimals: number;
-}
-
-interface HolderData {
-  account: string;
-  amount: string;
-}
-
 const SendViaArc200Component: React.FC = () => {
   const { activeAccount, signTransactions } = useWallet();
   const [builder, setBuilder] = useState<{ arc200?: any }>({});
@@ -57,57 +46,63 @@ const SendViaArc200Component: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [txIds, setTxIds] = useState<string[]>([]);
   const [totalGroups, setTotalGroups] = useState<number>(0);
-  const [signedGroups, setSignedGroups] = useState<number>(0);
   const [totalTransactions, setTotalTransactions] = useState(0);
   const [signedTransactions, setSignedTransactions] = useState<number>(0);
   const [lpHolders, setLpHolders] = useState<Map<string, number>>(new Map());
-  const [totalFees, setTotalFees] = useState<number>(0);
   const [balance, setBalance] = useState(0);
   const [voiBalance, setVoiBalance] = useState(0);
+  const [estimatedFees, setEstimatedFees] = useState(0);
   const [tokenInfo, setTokenInfo] = useState({
-    id: "6779767",
+    id: "",
     decimals: 6,
-    name: "VIA",
+    name: "",
   });
   const [ci, setCi] = useState<any>(null);
   const [tokenId, setTokenId] = useState<string>("");
-  const [lpTokens] = useState<LPToken[]>([
-    { name: "VIA", id: "6779767", decimals: 6 },
-    { name: "PIX", id: "29178793", decimals: 3 },
-    { name: "PIX v2", id: "40427802", decimals: 3 },
-    { name: "GRVB", id: "29136823", decimals: 0 },
-    { name: "GRVB v2", id: "40427797", decimals: 0 },
-    { name: "ROCKET", id: "29204384", decimals: 7 },
-    { name: "ROCKET v2", id: "40427805", decimals: 7 },
-    { name: "JG3", id: "6795456", decimals: 8 },
-    { name: "JG3 v2", id: "40427779", decimals: 8 },
-    { name: "Rewards", id: "23214349", decimals: 2 },
-    { name: "Tacos", id: "6795477", decimals: 0 },
-    { name: "Tacos v2", id: "40427782", decimals: 0 },
-    { name: "wVOI", id: "24590664", decimals: 6 },
-    { name: "VRC200", id: "6778021", decimals: 8 },
-    { name: "VRC200 v2", id: "40425710", decimals: 8 },
-  ]);
+  const [minBalance, setMinBalance] = useState<string>("");
+  const [tokenOptions, setTokenOptions] = useState<
+    { name: string; id: string; decimals: number }[]
+  >([]);
 
-  const tokenOptions = [
-    { name: "VIA", id: "6779767", decimals: 6 },
-    { name: "PIX", id: "29178793", decimals: 3 },
-    { name: "PIX v2", id: "40427802", decimals: 3 },
-    { name: "GRVB", id: "29136823", decimals: 0 },
-    { name: "GRVB v2", id: "40427797", decimals: 0 },
-    { name: "ROCKET", id: "29204384", decimals: 7 },
-    { name: "ROCKET v2", id: "40427805", decimals: 7 },
-    { name: "JG3", id: "6795456", decimals: 8 },
-    { name: "JG3 v2", id: "40427779", decimals: 8 },
-    { name: "Rewards", id: "23214349", decimals: 2 },
-    { name: "Tacos", id: "6795477", decimals: 0 },
-    { name: "Tacos v2", id: "40427782", decimals: 0 },
-    { name: "wVOI", id: "24590664", decimals: 6 },
-    { name: "VRC200", id: "6778021", decimals: 8 },
-    { name: "VRC200 v2", id: "40425710", decimals: 8 },
-  ];
+  useEffect(() => {
+    const fetchTokens = async () => {
+      if (!activeAccount) {
+        setTokenOptions([]);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          "https://mainnet-idx.nautilus.sh/nft-indexer/v1/arc200/balances?accountId=" +
+            activeAccount.address
+        );
+        const data = await response.json();
+        const formattedTokens = await Promise.all(
+          data.balances.map(async (token) => {
+            const infoRequest = await fetch(
+              "https://mainnet-idx.nautilus.sh/nft-indexer/v1/arc200/tokens?contractId=" +
+                token.contractId
+            );
+            const infoData = await infoRequest.json();
+            return {
+              name: infoData.tokens[0].name,
+              id: token.contractId.toString(),
+              decimals: infoData.tokens[0].decimals,
+            };
+          })
+        );
+
+        setTokenOptions(formattedTokens);
+      } catch (error) {
+        console.error("Failed to fetch ARC-200 tokens:", error);
+        setTokenOptions([]);
+      }
+    };
+    fetchTokens();
+  }, [activeAccount]);
 
   const handleTokenChange = (selectedTokenId) => {
+    if (!selectedTokenId) return;
     const selectedToken = tokenOptions.find(
       (token) => token.id === selectedTokenId
     );
@@ -118,24 +113,33 @@ const SendViaArc200Component: React.FC = () => {
 
   useEffect(() => {
     const fetchTokensAndOwners = async () => {
-      if (!tokenId) return;
+      if (!tokenId || !activeAccount) return;
       setLoading(true);
       try {
-        const response = await fetch(`/api/arc200-snapshot/testnet/${tokenId}`);
-        const data: HolderData[] = await response.json();
+        const response = await fetch(
+          `https://mainnet-idx.nautilus.sh/nft-indexer/v1/arc200/balances?contractId=${tokenId}&limit=1000`
+        );
+        const data = await response.json();
         const validHolders = new Map<string, number>();
-        setLpHolders(validHolders);
-        data.forEach((holder) => {
-          const amount = parseFloat(holder.amount);
-          if (amount > 0) validHolders.set(holder.account, amount);
-        });
 
-        let uniqueReceivers = [...validHolders.keys()];
+        if (data && data.balances) {
+          data.balances.forEach((holder) => {
+            const amount = Number(holder.balance);
+            const normalizedAmount = amount / 10 ** tokenInfo.decimals;
+            const minBalanceNum = parseFloat(minBalance) || 0;
+            if (amount > 0 && normalizedAmount >= minBalanceNum) {
+              validHolders.set(holder.accountId, normalizedAmount);
+            }
+          });
+        }
+
+        setLpHolders(validHolders);
+        const holderAddresses = [...validHolders.keys()];
 
         let zeroBalanceAddresses = [];
-        console.log("Unique Receivers:", uniqueReceivers);
+        console.log("Unique Receivers:", holderAddresses);
         await Promise.all(
-          uniqueReceivers.map(async (addr) => {
+          holderAddresses.map(async (addr) => {
             const arc200token = Number(tokenInfo.id);
             const check = new arc200(arc200token, algodClient, algodIndexer, {
               acc: { addr: activeAccount.address, sk: new Uint8Array(0) },
@@ -154,8 +158,8 @@ const SendViaArc200Component: React.FC = () => {
         );
 
         zeroBalanceAddresses = [...new Set(zeroBalanceAddresses)];
-        console.log("Zero balance addressess:", zeroBalanceAddresses);
-        uniqueReceivers = uniqueReceivers.filter(
+        console.log("Zero balance addresses:", zeroBalanceAddresses);
+        const uniqueReceivers = holderAddresses.filter(
           (addr) => !zeroBalanceAddresses.includes(addr)
         );
 
@@ -167,12 +171,14 @@ const SendViaArc200Component: React.FC = () => {
           if (index % chunkSize === 0) {
             adjustedChunks.push([]);
             currentChunkIndex += 1;
+
             if (zeroBalanceAddresses.length > 0) {
               adjustedChunks[currentChunkIndex].push(
                 zeroBalanceAddresses.shift()
               );
             }
           }
+
           if (adjustedChunks[currentChunkIndex].length < chunkSize) {
             adjustedChunks[currentChunkIndex].push(receiver);
           }
@@ -182,26 +188,28 @@ const SendViaArc200Component: React.FC = () => {
           adjustedChunks.push([zeroBalanceAddress]);
         });
 
-        console.log("Pre-processed chunks:", adjustedChunks);
+        // Calculate initial fee estimates
+        const BALANCE_BOX_COST = 28500;
+        let totalBoxCost = 0;
+        let totalTxCount = 0;
 
-        let totalFees = 0;
         adjustedChunks.forEach((chunk) => {
-          const baseFeePerAddress = 0.001;
-          const baseFeePerChunk = 0.002;
-          const additionalFeeForZeroBalance = 0.0285;
-
-          const isZeroBalanceChunk = chunk.some((addr) =>
+          const containsZeroBalanceAddress = chunk.some((addr) =>
             zeroBalanceAddresses.includes(addr)
           );
-          const chunkFee =
-            chunk.length * baseFeePerAddress +
-            baseFeePerChunk +
-            (isZeroBalanceChunk ? additionalFeeForZeroBalance : 0.0000001);
 
-          totalFees += chunkFee;
+          if (containsZeroBalanceAddress) {
+            totalBoxCost += BALANCE_BOX_COST;
+          }
+          totalTxCount += chunk.length;
         });
 
-        setTotalFees(totalFees);
+        // Calculate and update total fees (0.001 VOI per transaction + box costs)
+        const totalTxnFees = totalTxCount * 0.001;
+        const estimatedTotalFees = totalTxnFees + totalBoxCost / 1_000_000;
+        setEstimatedFees(estimatedTotalFees);
+        setTotalGroups(adjustedChunks.length);
+        setTotalTransactions(totalTxCount);
       } catch (error) {
         console.error("Failed to fetch tokens and owners:", error);
       } finally {
@@ -210,7 +218,7 @@ const SendViaArc200Component: React.FC = () => {
     };
 
     fetchTokensAndOwners();
-  }, [tokenId, tokenInfo.id]);
+  }, [tokenId, minBalance, tokenInfo.decimals, activeAccount]);
 
   useEffect(() => {
     if (activeAccount) {
@@ -309,6 +317,9 @@ const SendViaArc200Component: React.FC = () => {
   useEffect(() => {
     if (activeAccount && activeAccount.address) {
       const arc200token = Number(tokenInfo.id);
+
+      if (arc200token === 0) return;
+
       const tokenDecimals =
         tokenOptions.find((token) => Number(token.id) === arc200token)
           .decimals || 6;
@@ -326,25 +337,21 @@ const SendViaArc200Component: React.FC = () => {
             setVoiBalance(accountInfo["amount"]);
           }
 
-          cid
-            .arc200_balanceOf(activeAccount.address)
-            .then((res) => {
-              if (res.success) {
-                let formattedBalance: React.SetStateAction<number>;
-                if (tokenInfo.decimals === 0) {
-                  formattedBalance = Number(res.returnValue);
-                } else {
-                  const balanceBigInt = BigInt(res.returnValue);
-                  const divisor = BigInt(10 ** tokenDecimals);
-                  formattedBalance = Number(balanceBigInt) / Number(divisor);
-                }
+          const balanceResponse = await cid.arc200_balanceOf(
+            activeAccount.address
+          );
+          if (balanceResponse.success) {
+            let formattedBalance: React.SetStateAction<number>;
+            if (tokenInfo.decimals === 0) {
+              formattedBalance = Number(balanceResponse.returnValue);
+            } else {
+              const balanceBigInt = BigInt(balanceResponse.returnValue);
+              const divisor = BigInt(10 ** tokenDecimals);
+              formattedBalance = Number(balanceBigInt) / Number(divisor);
+            }
 
-                setBalance(formattedBalance);
-              }
-            })
-            .catch((error) => {
-              console.error("Failed to fetch account information:", error);
-            });
+            setBalance(formattedBalance);
+          }
         } catch (error) {
           console.error("Failed to fetch account information:", error);
         }
@@ -352,7 +359,7 @@ const SendViaArc200Component: React.FC = () => {
 
       fetchAccountInfo();
     }
-  }, [activeAccount, algodClient, algodIndexer, signedGroups, tokenInfo.id]);
+  }, [activeAccount, tokenInfo.id]);
 
   const handleInputChange =
     (setter: React.Dispatch<React.SetStateAction<string>>) =>
@@ -361,43 +368,34 @@ const SendViaArc200Component: React.FC = () => {
     };
 
   const handleSendAlgo = async () => {
-    //metric api stuff
-    const receiverAmounts = { receivers: [], amounts: [], totalAmount: 0 };
-    //end metric api stuff
+    // Initialize metrics collection
+    const metrics = {
+      receivers: [] as string[],
+      amounts: [] as number[],
+      totalAmount: 0,
+    };
 
     if (!activeAccount) {
       alert("Please connect your wallet.");
       return;
     }
 
-    if (!tokenId || !amount) {
-      alert("Please select a token and specify an amount.");
+    if (!tokenId || !amount || isNaN(parseFloat(amount))) {
+      alert("Please select a token and specify a valid amount.");
       return;
     }
+
     setLoading(true);
     setTxIds([]);
-    setTotalGroups(0);
-    setSignedGroups(0);
     setTotalTransactions(0);
     setSignedTransactions(0);
 
     try {
-      const response = await fetch(`/api/arc200-snapshot/testnet/${tokenId}`);
-      const data: HolderData[] = await response.json();
-      const validHolders = new Map<string, number>();
-      setLpHolders(validHolders);
-
-      data.forEach((holder) => {
-        const amount = parseFloat(holder.amount);
-        if (amount > 0) validHolders.set(holder.account, amount);
-      });
-
-      let uniqueReceivers = [...validHolders.keys()];
-
+      const validHolders = Array.from(lpHolders.keys());
       let zeroBalanceAddresses = [];
-      console.log("Unique Receivers:", uniqueReceivers);
+
       await Promise.all(
-        uniqueReceivers.map(async (addr) => {
+        validHolders.map(async (addr) => {
           const arc200token = Number(tokenInfo.id);
           const check = new arc200(arc200token, algodClient, algodIndexer, {
             acc: { addr: activeAccount.address, sk: new Uint8Array(0) },
@@ -414,10 +412,7 @@ const SendViaArc200Component: React.FC = () => {
       );
 
       zeroBalanceAddresses = [...new Set(zeroBalanceAddresses)];
-      console.log("Zero balance addressess:", zeroBalanceAddresses);
-      const originalZeroBalanceAddresses = [...zeroBalanceAddresses];
-
-      uniqueReceivers = uniqueReceivers.filter(
+      const holderAddresses = validHolders.filter(
         (addr) => !zeroBalanceAddresses.includes(addr)
       );
 
@@ -425,7 +420,7 @@ const SendViaArc200Component: React.FC = () => {
       let currentChunkIndex = -1;
       const chunkSize = 11;
 
-      uniqueReceivers.forEach((receiver, index) => {
+      holderAddresses.forEach((receiver, index) => {
         if (index % chunkSize === 0) {
           adjustedChunks.push([]);
           currentChunkIndex += 1;
@@ -446,49 +441,47 @@ const SendViaArc200Component: React.FC = () => {
         adjustedChunks.push([zeroBalanceAddress]);
       });
 
-      setTotalGroups(adjustedChunks.length);
       const BALANCE_BOX_COST = 28500;
       const txns = [];
+      let totalBoxCost = 0;
+      let totalTxCount = 0;
 
       for (const chunk of adjustedChunks) {
         let paymentAmount = 1;
 
         const containsZeroBalanceAddress = chunk.some((addr) =>
-          originalZeroBalanceAddresses.includes(addr)
+          zeroBalanceAddresses.includes(addr)
         );
 
         if (containsZeroBalanceAddress) {
           paymentAmount = BALANCE_BOX_COST;
+          totalBoxCost += BALANCE_BOX_COST;
         }
 
-        const tokenDecimals = Number(tokenInfo.decimals);
+        const amountNumber = perHolderAmount
+          ? Math.round(parseFloat(amount) * 10 ** tokenInfo.decimals)
+          : Math.floor(
+              Math.round(parseFloat(amount) * 10 ** tokenInfo.decimals) /
+                lpHolders.size
+            );
 
-        const multiplicationFactor = 10 ** tokenDecimals;
-        const parsedAmount = parseInt(amount, 10);
-        const divisionResult =
-          (parsedAmount * multiplicationFactor) / lpHolders.size;
-        const amountNumber: number = perHolderAmount
-          ? parsedAmount * multiplicationFactor
-          : Math.floor(divisionResult);
         console.log("amount number:", amountNumber);
 
         const buildP = (
           await Promise.all(
             chunk.map((c) => {
+              totalTxCount++;
               return builder.arc200.arc200_transfer(c, amountNumber);
             })
           )
         ).map(({ obj }) => obj);
 
-        //metric api stuff
+        // Update metrics for this chunk
         chunk.forEach((c) => {
-          const amountForReceiver = amountNumber;
-
-          receiverAmounts.receivers.push(c);
-          receiverAmounts.amounts.push(amountForReceiver);
-          receiverAmounts.totalAmount += amountForReceiver;
+          metrics.receivers.push(c);
+          metrics.amounts.push(amountNumber);
+          metrics.totalAmount += amountNumber;
         });
-        //end metric api stuff
 
         ci.setEnableGroupResourceSharing(true);
         ci.setPaymentAmount(paymentAmount);
@@ -498,6 +491,12 @@ const SendViaArc200Component: React.FC = () => {
         txns.push(customR.txns);
         setTotalTransactions((prevTotal) => prevTotal + customR.txns.length);
       }
+
+      // Calculate and update total fees (0.001 VOI per transaction + box costs)
+      const totalTxnFees = totalTxCount * 0.001;
+      const estimatedTotalFees = totalTxnFees + totalBoxCost / 1_000_000;
+      setEstimatedFees(estimatedTotalFees);
+      setTotalGroups(adjustedChunks.length);
 
       for (const group of txns) {
         const binaryTxns = group.map(
@@ -511,7 +510,6 @@ const SendViaArc200Component: React.FC = () => {
           `Group sent successfully, Transaction ID: ${sendTxnResponse.txId}`
         );
         setTxIds((prev) => [...prev, sendTxnResponse.txId]);
-        setSignedGroups((prev) => prev + 1);
         setSignedTransactions((prev) => prev + group.length);
       }
 
@@ -522,10 +520,8 @@ const SendViaArc200Component: React.FC = () => {
         origin: { y: 0.6 },
       });
       setDialogOpen(true);
-    } catch (error) {
-      console.error("Voi transfer failed:", error);
-      alert(`Failed to send Voi. Error: ${error.message}`);
-    } finally {
+
+      // Record the airdrop metrics
       fetch("/api/record-token-airdrop", {
         method: "POST",
         headers: {
@@ -538,9 +534,9 @@ const SendViaArc200Component: React.FC = () => {
           tokenName: tokenInfo.name,
           tokenDecimals: tokenInfo.decimals,
           token: tokenId,
-          receivers: receiverAmounts.receivers,
-          amounts: receiverAmounts.amounts,
-          totalAmount: receiverAmounts.totalAmount,
+          receivers: metrics.receivers,
+          amounts: metrics.amounts,
+          totalAmount: metrics.totalAmount,
         }),
       })
         .then((response) => response.json())
@@ -548,27 +544,25 @@ const SendViaArc200Component: React.FC = () => {
         .catch((error) => {
           console.error("Error recording airdrop:", error);
         });
-      //end metric api stuff
+    } catch (error) {
+      console.error("Failed to send tokens:", error);
+      alert(`Failed to send tokens. Error: ${error.message}`);
+    } finally {
       setLoading(false);
     }
   };
 
-  const tokenDecimals = Number(tokenInfo.decimals);
-  const multiplicationFactor = 10 ** tokenDecimals;
-
-  console.log("holders size:", lpHolders.size);
   const totalCost = perHolderAmount
-    ? parseInt(amount, 10) * multiplicationFactor * lpHolders.size
-    : parseInt(amount, 10) * multiplicationFactor;
+    ? Math.round(parseFloat(amount || "0") * 10 ** tokenInfo.decimals) *
+      lpHolders.size
+    : Math.round(parseFloat(amount || "0") * 10 ** tokenInfo.decimals);
 
-  let amountPerHolderNFT;
-  if (perHolderAmount) {
-    amountPerHolderNFT = parseInt(amount, 10) * multiplicationFactor;
-  } else {
-    const divisor = lpHolders.size;
-    amountPerHolderNFT =
-      (parseInt(amount, 10) * multiplicationFactor) / divisor;
-  }
+  const perHolderCost = perHolderAmount
+    ? Math.round(parseFloat(amount || "0") * 10 ** tokenInfo.decimals)
+    : Math.floor(
+        Math.round(parseFloat(amount || "0") * 10 ** tokenInfo.decimals) /
+          lpHolders.size
+      );
 
   return (
     <>
@@ -596,12 +590,12 @@ const SendViaArc200Component: React.FC = () => {
                 <span className="font-bold">VOI Balance: </span>{" "}
                 {formatArc200Amount(
                   isNaN(voiBalance) ? 0 : Math.round(voiBalance / 1000000),
-                  tokenDecimals
+                  tokenInfo.decimals
                 )}
               </Text>
               <Text className="text-center">
                 <span className="font-bold">{tokenInfo.name} Balance: </span>
-                {formatArc200BalanceAmount(balance, tokenDecimals)}
+                {formatArc200BalanceAmount(balance, tokenInfo.decimals)}
               </Text>
             </div>
           )}
@@ -612,13 +606,23 @@ const SendViaArc200Component: React.FC = () => {
             placeholder="Select Token"
             className=""
             onValueChange={setTokenId}
+            disabled={!activeAccount}
           >
-            {lpTokens.map((token) => (
+            {tokenOptions.map((token) => (
               <SearchSelectItem key={token.id} value={String(token.id)}>
                 {token.name}
               </SearchSelectItem>
             ))}
           </SearchSelect>
+          <TextInput
+            placeholder={`Minimum Balance to Include (optional)`}
+            onChange={handleInputChange(setMinBalance)}
+            className="mt-4"
+            disabled={!activeAccount || !tokenId}
+          />
+          <Text className="mt-2 text-sm text-gray-600">
+            Only include holders with at least this many tokens in the airdrop
+          </Text>
           <Divider className="mt-12 font-bold">
             Step 2: Specify amount & token to send
           </Divider>
@@ -627,13 +631,13 @@ const SendViaArc200Component: React.FC = () => {
               placeholder={`Amount`}
               onChange={handleInputChange(setAmount)}
               className=""
+              disabled={!activeAccount || !tokenId}
             />
             <SearchSelect
               placeholder="Select Token"
               className=""
-              defaultValue="6779767"
-              enableClear={false}
               onValueChange={handleTokenChange}
+              disabled={!activeAccount}
             >
               {tokenOptions.map((token) => (
                 <SearchSelectItem key={token.id} value={token.id}>
@@ -655,8 +659,8 @@ const SendViaArc200Component: React.FC = () => {
             <Text className="text-center">
               <span className="font-bold">Total Cost:</span>{" "}
               {formatArc200Amount(
-                isNaN(totalCost) ? 0 : totalCost / multiplicationFactor,
-                tokenDecimals
+                isNaN(totalCost) ? 0 : totalCost / 10 ** tokenInfo.decimals,
+                tokenInfo.decimals
               )}{" "}
               {tokenInfo.name}
             </Text>
@@ -667,16 +671,16 @@ const SendViaArc200Component: React.FC = () => {
             <Text className="text-center">
               <span className="font-bold">Amount per Holder:</span>{" "}
               {formatArc200Amount(
-                isNaN(amountPerHolderNFT)
+                isNaN(perHolderCost)
                   ? 0
-                  : amountPerHolderNFT / multiplicationFactor,
-                tokenDecimals
+                  : perHolderCost / 10 ** tokenInfo.decimals,
+                tokenInfo.decimals
               )}{" "}
               {tokenInfo.name}
             </Text>
             <Text className="text-center">
               <span className="font-bold">Transaction / Box Fees:</span>{" "}
-              {formatVoiAmount(isNaN(totalFees) ? 0 : totalFees)} VOI
+              {formatVoiAmount(isNaN(estimatedFees) ? 0 : estimatedFees)} VOI
             </Text>
           </div>
           <Button
@@ -687,22 +691,22 @@ const SendViaArc200Component: React.FC = () => {
             loading={loading}
             disabled={
               loading ||
-              Number(formatArc200Amount(amountPerHolderNFT, tokenDecimals)) ==
+              Number(formatArc200Amount(perHolderCost, tokenInfo.decimals)) ==
                 0 ||
               totalCost === 0 ||
-              amountPerHolderNFT === 0 ||
-              totalFees === 0 ||
-              totalCost / multiplicationFactor >= balance ||
-              totalFees >= voiBalance / 1000000
+              perHolderCost === 0 ||
+              estimatedFees === 0 ||
+              totalCost / 10 ** tokenInfo.decimals >= balance ||
+              estimatedFees >= voiBalance / 1_000_000
             }
           >
             Send it!
           </Button>
           <ProgressBar
-            value={(signedGroups / totalGroups) * 100}
+            value={(signedTransactions / totalTransactions) * 100}
             className="mt-8 w-full"
           />
-          <Text className="mt-2">{`Progress: ${signedGroups} of ${totalGroups} groups signed ( ${signedTransactions} / ${totalTransactions} Transactions Sent ).`}</Text>
+          <Text className="mt-2">{`Progress: ${signedTransactions} of ${totalTransactions} Transactions Sent (${totalGroups} groups).`}</Text>
         </Card>
       </Grid>
       {dialogOpen && (
