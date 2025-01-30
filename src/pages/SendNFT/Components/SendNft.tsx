@@ -148,6 +148,11 @@ const SendNFTComponent: React.FC = () => {
         .do();
       const txId = sendTxnResponse.txId;
 
+      // Remove the sent NFT from the local state
+      setNfts((prevNfts) =>
+        prevNfts.filter((nft) => `${nft.contractId}-${nft.tokenId}` !== nftId)
+      );
+
       setTxIdState(txId);
       confetti({
         zIndex: 999,
