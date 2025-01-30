@@ -649,7 +649,7 @@ const SendViaComponent: React.FC = () => {
                 key={collection.contractId}
                 value={String(collection.contractId)}
               >
-                {collection.name}
+                {collection.name} ({collection.contractId})
               </SearchSelectItem>
             ))}
           </SearchSelect>
@@ -679,7 +679,7 @@ const SendViaComponent: React.FC = () => {
             >
               {tokenOptions.map((token) => (
                 <SearchSelectItem key={token.id} value={token.id}>
-                  {token.name}
+                  {token.name} ({token.id})
                 </SearchSelectItem>
               ))}
             </SearchSelect>

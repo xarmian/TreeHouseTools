@@ -320,7 +320,8 @@ const NFTSnapshotComponent: React.FC = () => {
                 key={collection.contractId}
                 value={String(collection.contractId)}
               >
-                {collection.name || `Collection #${collection.contractId}`}
+                {collection.name || `Collection #${collection.contractId}`} (
+                {collection.contractId})
               </SearchSelectItem>
             ))}
           </SearchSelect>

@@ -19,10 +19,13 @@ import { scheduleArc200HolderSnapshot } from "../../../utils/api";
 
 const Arc200SnapshotComponent: React.FC = () => {
   const [tokenInfo, setTokenInfo] = useState({
-    id: "6779767",
+    id: "",
     decimals: 6,
-    name: "VIA",
+    name: "",
   });
+  const [tokenOptions, setTokenOptions] = useState<
+    { name: string; id: string; decimals: number }[]
+  >([]);
   const [SnapshotData, setSnapshotData] = useState([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [isScheduled, setIsScheduled] = useState<boolean>(false);
@@ -45,23 +48,37 @@ const Arc200SnapshotComponent: React.FC = () => {
   );
   const [timeOptions, setTimeOptions] = useState([]);
 
-  const tokenOptions = [
-    { name: "VIA", id: "6779767", decimals: 6 },
-    { name: "PIX", id: "29178793", decimals: 3 },
-    { name: "PIX v2", id: "40427802", decimals: 3 },
-    { name: "GRVB", id: "29136823", decimals: 0 },
-    { name: "GRVB v2", id: "40427797", decimals: 0 },
-    { name: "ROCKET", id: "29204384", decimals: 7 },
-    { name: "ROCKET v2", id: "40427805", decimals: 7 },
-    { name: "JG3", id: "6795456", decimals: 8 },
-    { name: "JG3 v2", id: "40427779", decimals: 8 },
-    { name: "Rewards", id: "23214349", decimals: 2 },
-    { name: "Tacos", id: "6795477", decimals: 0 },
-    { name: "Tacos v2", id: "40427782", decimals: 0 },
-    { name: "wVOI", id: "24590664", decimals: 6 },
-    { name: "VRC200", id: "6778021", decimals: 8 },
-    { name: "VRC200 v2", id: "40425710", decimals: 8 },
-  ];
+  // Fetch ARC-200 tokens from Nautilus API
+  useEffect(() => {
+    const fetchTokens = async () => {
+      try {
+        const response = await fetch(
+          "https://mainnet-idx.nautilus.sh/nft-indexer/v1/arc200/tokens?verified=true"
+        );
+        const data = await response.json();
+
+        if (data && data.tokens) {
+          const formattedTokens = data.tokens.map((token) => ({
+            name: token.name,
+            id: token.contractId.toString(),
+            decimals: token.decimals,
+          }));
+
+          setTokenOptions(formattedTokens);
+
+          // Set default token if available
+          if (formattedTokens.length > 0) {
+            setTokenInfo(formattedTokens[0]);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch ARC-200 tokens:", error);
+        setTokenOptions([]);
+      }
+    };
+
+    fetchTokens();
+  }, []);
 
   const handleTokenChange = (selectedTokenId) => {
     const selectedToken = tokenOptions.find(
@@ -81,31 +98,47 @@ const Arc200SnapshotComponent: React.FC = () => {
         origin: { y: 0.6 },
       });
     };
+
     setLoading(true);
-    const network = "mainet";
-    const tokenId = tokenInfo.id;
     try {
-      const response = await fetch(
-        `/api/arc200-snapshot/${network}/${tokenId}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
+      let allBalances = [];
+      let nextToken = null;
+
+      do {
+        const url = new URL(
+          "https://mainnet-idx.nautilus.sh/nft-indexer/v1/arc200/balances"
+        );
+        url.searchParams.append("contractId", tokenInfo.id);
+        if (nextToken) {
+          url.searchParams.append("next", nextToken);
         }
-      );
 
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
-      }
+        const response = await fetch(url.toString());
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
 
-      const jsonData = await response.json();
-      setSnapshotData(jsonData);
+        const data = await response.json();
+
+        // Filter out zero balances and format the data
+        const validBalances = data.balances
+          .filter((holder) => Number(holder.balance) > 0)
+          .map((holder) => ({
+            account: holder.accountId,
+            amount: Number(holder.balance) / Math.pow(10, tokenInfo.decimals),
+          }));
+
+        allBalances = [...allBalances, ...validBalances];
+        nextToken = data.next;
+      } while (nextToken);
+
+      setSnapshotData(allBalances);
+      launchConfetti();
     } catch (error) {
       console.error("Error fetching snapshot data:", error);
+      alert("Failed to fetch snapshot data. Please try again.");
     } finally {
       setLoading(false);
-      launchConfetti();
     }
   };
 
@@ -184,15 +217,15 @@ const Arc200SnapshotComponent: React.FC = () => {
   };
 
   const generateCSVAndDownload = () => {
-    const csvHeader = "Address,Amount\n";
+    const csvHeader = "Address,Balance\n";
     const csvRows = [];
 
-    for (const token of SnapshotData) {
-      if (!token.account || !token.amount) {
-        console.error("Missing account or amount in token:", token);
+    for (const holder of SnapshotData) {
+      if (!holder.account || holder.amount === undefined) {
+        console.error("Missing account or amount in holder:", holder);
         continue;
       }
-      csvRows.push(`${token.account},${token.amount}`);
+      csvRows.push(`${holder.account},${holder.amount}`);
     }
 
     const csvContent = csvHeader + csvRows.join("\n");
@@ -201,7 +234,8 @@ const Arc200SnapshotComponent: React.FC = () => {
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = `accounts_balances_${tokenInfo.id}_snapshot.csv`;
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      link.download = `${tokenInfo.name}_${tokenInfo.id}_holders_${timestamp}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -288,8 +322,9 @@ const Arc200SnapshotComponent: React.FC = () => {
   useEffect(() => {
     const currentUTCHour = new Date().getUTCHours();
     const currentUTCMinute = new Date().getUTCMinutes();
-    const isTodaySelected =
-      selectedDate.toDateString() === todayUTC.toDateString();
+    const isTodaySelected = selectedDate
+      ? selectedDate.toDateString() === todayUTC.toDateString()
+      : false;
 
     const filteredTimeOptions = Array.from({ length: 24 * 12 }, (_, i) => {
       const hour = Math.floor(i / 12);
@@ -329,13 +364,13 @@ const Arc200SnapshotComponent: React.FC = () => {
           <SearchSelect
             placeholder="Select Token"
             className=""
-            defaultValue="6779767"
-            enableClear={false}
             onValueChange={handleTokenChange}
+            value={tokenInfo.id}
+            disabled={loading}
           >
             {tokenOptions.map((token) => (
               <SearchSelectItem key={token.id} value={token.id}>
-                {token.name}
+                {token.name} ({token.id})
               </SearchSelectItem>
             ))}
           </SearchSelect>

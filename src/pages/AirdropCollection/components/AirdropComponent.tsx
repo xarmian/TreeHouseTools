@@ -306,7 +306,7 @@ const SendAlgoComponent: React.FC = () => {
                 key={collection.contractId}
                 value={String(collection.contractId)}
               >
-                {collection.name}
+                {collection.name} ({collection.contractId})
               </SearchSelectItem>
             ))}
           </SearchSelect>

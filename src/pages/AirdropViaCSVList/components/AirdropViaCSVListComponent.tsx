@@ -647,7 +647,7 @@ const SendViaCSVListComponent: React.FC = () => {
             >
               {tokenOptions.map((token) => (
                 <SearchSelectItem key={token.id} value={token.id}>
-                  {token.name}
+                  {token.name} ({token.id})
                 </SearchSelectItem>
               ))}
             </SearchSelect>

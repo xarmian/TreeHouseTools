@@ -73,26 +73,19 @@ const SendViaArc200Component: React.FC = () => {
 
       try {
         const response = await fetch(
-          "https://mainnet-idx.nautilus.sh/nft-indexer/v1/arc200/balances?accountId=" +
-            activeAccount.address
+          "https://mainnet-idx.nautilus.sh/nft-indexer/v1/arc200/tokens?verified=true"
         );
         const data = await response.json();
-        const formattedTokens = await Promise.all(
-          data.balances.map(async (token) => {
-            const infoRequest = await fetch(
-              "https://mainnet-idx.nautilus.sh/nft-indexer/v1/arc200/tokens?contractId=" +
-                token.contractId
-            );
-            const infoData = await infoRequest.json();
-            return {
-              name: infoData.tokens[0].name,
-              id: token.contractId.toString(),
-              decimals: infoData.tokens[0].decimals,
-            };
-          })
-        );
 
-        setTokenOptions(formattedTokens);
+        if (data && data.tokens) {
+          const formattedTokens = data.tokens.map((token) => ({
+            name: token.name,
+            id: token.contractId.toString(),
+            decimals: token.decimals,
+          }));
+
+          setTokenOptions(formattedTokens);
+        }
       } catch (error) {
         console.error("Failed to fetch ARC-200 tokens:", error);
         setTokenOptions([]);
@@ -610,7 +603,7 @@ const SendViaArc200Component: React.FC = () => {
           >
             {tokenOptions.map((token) => (
               <SearchSelectItem key={token.id} value={String(token.id)}>
-                {token.name}
+                {token.name} (ID: {token.id})
               </SearchSelectItem>
             ))}
           </SearchSelect>
@@ -641,7 +634,7 @@ const SendViaArc200Component: React.FC = () => {
             >
               {tokenOptions.map((token) => (
                 <SearchSelectItem key={token.id} value={token.id}>
-                  {token.name}
+                  {token.name} (ID: {token.id})
                 </SearchSelectItem>
               ))}
             </SearchSelect>
