@@ -31,7 +31,10 @@ import {
 } from "../../../utils/formatting";
 
 const handleTxIdClick = (txId) => {
-  window.open(`https://voi.observer/explorer/transaction/${txId}`, "_blank");
+  window.open(
+    `https://block.voi.network/explorer/transaction/${txId}`,
+    "_blank"
+  );
 };
 
 const AirdropArc200HoldersComponent: React.FC = () => {

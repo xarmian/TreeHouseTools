@@ -279,7 +279,7 @@ const AirdropCSVComponent: React.FC = () => {
                   <Link
                     onClick={() =>
                       window.open(
-                        `https://voi.observer/explorer/transaction/${txId}`,
+                        `https://block.voi.network/explorer/transaction/${txId}`,
                         "_blank"
                       )
                     }
