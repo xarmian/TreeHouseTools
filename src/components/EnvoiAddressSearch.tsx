@@ -12,6 +12,7 @@ const EnvoiAddressSearch: React.FC<EnvoiAddressSearchProps> = ({
   placeholder = "Search by enVoi name or enter address",
 }) => {
   const [inputValue, setInputValue] = useState("");
+  const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [users, setUsers] = useState<
     {
       name: string;
@@ -25,9 +26,20 @@ const EnvoiAddressSearch: React.FC<EnvoiAddressSearchProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const isValidAlgorandAddress = (address: string): boolean => {
+    return /^[A-Z2-7]{58}$/.test(address);
+  };
+
   const searchEnvoi = debounce(async (query: string) => {
     if (!query) {
       setUsers([]);
+      return;
+    }
+
+    // If it's a valid Algorand address, don't search
+    if (isValidAlgorandAddress(query)) {
+      setUsers([]);
+      handleDirectAddressInput(query);
       return;
     }
 
@@ -55,6 +67,12 @@ const EnvoiAddressSearch: React.FC<EnvoiAddressSearchProps> = ({
     }
   }, 300);
 
+  const handleDirectAddressInput = (address: string) => {
+    setSelectedAddress(address);
+    onAddressSelect(address);
+    setIsOpen(false);
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -73,13 +91,21 @@ const EnvoiAddressSearch: React.FC<EnvoiAddressSearchProps> = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setInputValue(value);
-    if (value.length >= 2) {
+    setSelectedAddress(null);
+
+    if (isValidAlgorandAddress(value)) {
+      handleDirectAddressInput(value);
+    } else if (value.length >= 2) {
       searchEnvoi(value);
+    } else {
+      setUsers([]);
+      setIsOpen(false);
     }
   };
 
   const handleSelect = (user: { name: string; address: string }) => {
     setInputValue(user.name);
+    setSelectedAddress(user.address);
     onAddressSelect(user.address);
     setIsOpen(false);
   };
@@ -128,6 +154,16 @@ const EnvoiAddressSearch: React.FC<EnvoiAddressSearchProps> = ({
           highlightedIndex >= 0 ? `envoi-option-${highlightedIndex}` : undefined
         }
       />
+      {selectedAddress && (
+        <div className="mt-2 rounded-tremor-default border border-tremor-border bg-tremor-background-subtle p-2">
+          <span className="text-sm text-tremor-content-subtle">
+            Selected address:
+          </span>
+          <div className="mt-1 break-all font-mono text-sm text-tremor-content">
+            {selectedAddress}
+          </div>
+        </div>
+      )}
       {isOpen && (
         <div
           ref={dropdownRef}
