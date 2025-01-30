@@ -28,7 +28,6 @@ import {
   formatAddress,
   formatVoiAmount,
   truncateTxId,
-  formatArc200BalanceAmount,
 } from "../../../utils/formatting";
 
 const handleTxIdClick = (txId) => {
@@ -58,7 +57,7 @@ const AirdropArc200HoldersComponent: React.FC = () => {
   const [signedTransactions, setSignedTransactions] = useState<number>(0);
   const [lpHolders, setLpHolders] = useState<Map<string, number>>(new Map());
   const [voiBalance, setVoiBalance] = useState<number>(0);
-  const [balance, setBalance] = useState<number>(0);
+  const [, setBalance] = useState<number>(0);
 
   useEffect(() => {
     const fetchTokens = async () => {
@@ -146,8 +145,6 @@ const AirdropArc200HoldersComponent: React.FC = () => {
     (event: ChangeEvent<HTMLInputElement>) => {
       setter(event.target.value);
     };
-
-  const tokenDecimals = Number(tokenInfo.decimals);
 
   const totalCost = perHolderAmount
     ? Math.round(parseFloat(amount || "0") * 1_000_000) * lpHolders.size
