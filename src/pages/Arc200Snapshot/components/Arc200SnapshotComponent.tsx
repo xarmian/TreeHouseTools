@@ -28,7 +28,10 @@ const Arc200SnapshotComponent: React.FC = () => {
   >([]);
   const [SnapshotData, setSnapshotData] = useState([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [isScheduled, setIsScheduled] = useState<boolean>(false);
+  const [
+    isScheduled,
+    //, setIsScheduled
+  ] = useState<boolean>(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [email, setEmail] = useState("");
