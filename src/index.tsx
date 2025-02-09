@@ -24,6 +24,7 @@ import AirdropViaLPHolderPage from "./pages/AirdropViaLPHolders";
 import AirdropCSVPage from "./pages/AirdropCSVList";
 import AirdropViaCSVListPage from "./pages/AirdropViaCSVList";
 import NFTBurnPage from "./pages/NFTBurn";
+import AirdropVSA from "./pages/AirdropVSA";
 
 const walletManager = new WalletManager({
   network: NetworkId.VOIMAIN,
@@ -69,6 +70,7 @@ const App = () => {
               <Route path="/arc200-snapshot" element={<Arc200SnapshotPage />} />
               <Route path="/lp-snapshot" element={<LPSnapshotPage />} />
               <Route path="/burn-nft" element={<NFTBurnPage />} />
+              <Route path="/vsa-airdrop" element={<AirdropVSA />} />
             </Routes>
           </BrowserRouter>
         </NextUIProvider>

@@ -65,6 +65,16 @@ const ExampleSidebar: FC<ExampleSidebarProps> = function ({ isSidebarOpen }) {
                 </Sidebar.Item>
                 <Sidebar.Item
                   as={Link}
+                  to="/vsa-airdrop"
+                  icon={HiPaperAirplane}
+                  className={
+                    "/vsa-airdrop" === currentPage ? "bg-gray-700" : ""
+                  }
+                >
+                  Send VSA
+                </Sidebar.Item>
+                <Sidebar.Item
+                  as={Link}
                   to="/arc200-collection-airdrop"
                   icon={HiPaperAirplane}
                   className={
