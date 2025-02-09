@@ -374,14 +374,16 @@ const Arc200SnapshotComponent: React.FC = () => {
               </SearchSelectItem>
             ))}
           </SearchSelect>
+          {/* 
           <Divider className="mt-10 font-bold">
-            Step 2: Choose instant or scheduled time{" "}
-          </Divider>
-          <div className="flex items-center space-x-3">
-            <Text>Take instant snapshot</Text>
-            <Switch onChange={handleScheduledToggle} />
-            <Text>Take scheduled snapshot</Text>
-          </div>
+              Step 2: Choose instant or scheduled time{" "}
+            </Divider>
+            <div className="flex items-center space-x-3">
+              <Text>Take instant snapshot</Text>
+              <Switch onChange={handleScheduledToggle} />
+              <Text>Take scheduled snapshot</Text>
+              </div>
+          */}
           {isScheduled && (
             <>
               <Divider className="mt-10 font-bold">
@@ -421,7 +423,7 @@ const Arc200SnapshotComponent: React.FC = () => {
             </>
           )}
           <Divider className="mt-10 font-bold">
-            {isScheduled ? "Step 5: Schedule" : "Step 3: Download"} ARC-200 CSV
+            {isScheduled ? "Step 5: Schedule" : "Step 2: Download"} ARC-200 CSV
           </Divider>
           <Button
             size="xl"

@@ -77,6 +77,11 @@ const SendViaComponent: React.FC = () => {
     : "Amount per NFT";
 
   useEffect(() => {
+    if (!activeAccount) {
+      setTokenOptions([]);
+      return;
+    }
+
     const fetchTokens = async () => {
       try {
         const response = await fetch(
