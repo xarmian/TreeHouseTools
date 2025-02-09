@@ -121,6 +121,18 @@ const ExampleSidebar: FC<ExampleSidebarProps> = function ({ isSidebarOpen }) {
                 </Sidebar.Item>
                 <Sidebar.Item
                   as={Link}
+                  to="/vsa-arc200-holders-airdrop"
+                  icon={HiPaperAirplane}
+                  className={
+                    "/vsa-arc200-holders-airdrop" === currentPage
+                      ? "bg-gray-700"
+                      : ""
+                  }
+                >
+                  Send VSA
+                </Sidebar.Item>
+                <Sidebar.Item
+                  as={Link}
                   to="/arc200-token-airdrop"
                   icon={HiPaperAirplane}
                   className={
@@ -141,6 +153,16 @@ const ExampleSidebar: FC<ExampleSidebarProps> = function ({ isSidebarOpen }) {
                   }
                 >
                   Send VOI
+                </Sidebar.Item>
+                <Sidebar.Item
+                  as={Link}
+                  to="/vsa-csv-airdrop"
+                  icon={HiPaperAirplane}
+                  className={
+                    "/vsa-csv-airdrop" === currentPage ? "bg-gray-700" : ""
+                  }
+                >
+                  Send VSA
                 </Sidebar.Item>
                 <Sidebar.Item
                   as={Link}
