@@ -187,14 +187,6 @@ const AirdropVSAComponent: React.FC = () => {
         );
 
         setTokenOptions(formattedAssets);
-        if (formattedAssets.length > 0) {
-          setTokenInfo({
-            id: formattedAssets[0].id,
-            decimals: formattedAssets[0].decimals,
-            name: formattedAssets[0].name,
-          });
-          setBalance(formattedAssets[0].balance);
-        }
       } catch (error) {
         console.error("Failed to fetch VSAs:", error);
       }
@@ -444,12 +436,14 @@ const AirdropVSAComponent: React.FC = () => {
                   isNaN(voiBalance) ? 0 : Math.round(voiBalance / 1000000)
                 )}
               </Text>
-              <Text className="text-center">
-                <span className="font-bold">
-                  {tokenInfo.name || "Token"} Balance:{" "}
-                </span>{" "}
-                {balance / Math.pow(10, tokenInfo.decimals)}
-              </Text>
+              {tokenInfo.id && (
+                <Text className="text-center">
+                  <span className="font-bold">
+                    {tokenInfo.name || "Token"} Balance:{" "}
+                  </span>{" "}
+                  {balance / Math.pow(10, tokenInfo.decimals)}
+                </Text>
+              )}
             </div>
           )}
           <Divider className="font-bold">Step 1: Select a Collection</Divider>
@@ -513,7 +507,9 @@ const AirdropVSAComponent: React.FC = () => {
               <span className="font-bold">
                 Unique {distributeUnique ? "Holders" : "NFTs"}:
               </span>{" "}
-              {distributeUnique ? optedInAddresses.length : uniqueTokensCount}
+              {distributeUnique
+                ? optedInAddresses.length + notOptedInAddresses.length
+                : uniqueTokensCount}
             </Text>
             <Text className="text-center">
               <span className="font-bold">

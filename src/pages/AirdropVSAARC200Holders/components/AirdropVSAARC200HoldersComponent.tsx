@@ -92,10 +92,6 @@ const AirdropVSAARC200HoldersComponent: React.FC = () => {
           }));
 
           setArc200TokenOptions(formattedTokens);
-          if (formattedTokens.length > 0) {
-            setArc200TokenInfo(formattedTokens[0]);
-            setArc200TokenId(formattedTokens[0].id);
-          }
         }
       } catch (error) {
         console.error("Failed to fetch ARC-200 tokens:", error);
@@ -133,14 +129,6 @@ const AirdropVSAARC200HoldersComponent: React.FC = () => {
         );
 
         setTokenOptions(formattedAssets);
-        if (formattedAssets.length > 0) {
-          setTokenInfo({
-            id: formattedAssets[0].id,
-            decimals: formattedAssets[0].decimals,
-            name: formattedAssets[0].name,
-          });
-          setBalance(formattedAssets[0].balance);
-        }
       } catch (error) {
         console.error("Failed to fetch VSAs:", error);
       }
@@ -405,12 +393,14 @@ const AirdropVSAARC200HoldersComponent: React.FC = () => {
                   isNaN(voiBalance) ? 0 : Math.round(voiBalance / 1000000)
                 )}
               </Text>
-              <Text className="text-center">
-                <span className="font-bold">
-                  {tokenInfo.name || "Token"} Balance:{" "}
-                </span>{" "}
-                {balance / Math.pow(10, tokenInfo.decimals)}
-              </Text>
+              {tokenInfo.id && (
+                <Text className="text-center">
+                  <span className="font-bold">
+                    {tokenInfo.name || "Token"} Balance:{" "}
+                  </span>{" "}
+                  {balance / Math.pow(10, tokenInfo.decimals)}
+                </Text>
+              )}
             </div>
           )}
           <Divider className="font-bold">
@@ -474,7 +464,7 @@ const AirdropVSAARC200HoldersComponent: React.FC = () => {
             </Text>
             <Text className="text-center">
               <span className="font-bold">Unique Holders:</span>{" "}
-              {optedInAddresses.length}
+              {optedInAddresses.length + notOptedInAddresses.length}
             </Text>
             <Text className="text-center">
               <span className="font-bold">Amount per Holder:</span>{" "}

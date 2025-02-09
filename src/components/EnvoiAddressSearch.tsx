@@ -196,12 +196,16 @@ const EnvoiAddressSearch: React.FC<EnvoiAddressSearchProps> = ({
                 }}
                 tabIndex={0}
               >
-                {user.avatar && (
+                {user.avatar ? (
                   <img
                     src={user.avatar}
                     alt={`${user.name}'s avatar`}
                     className="size-6 rounded-full"
                   />
+                ) : (
+                  <div className="flex size-6 items-center justify-center rounded-full bg-tremor-brand text-sm font-medium text-white">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
                 )}
                 <div className="flex flex-col">
                   <span className="font-medium text-tremor-content">
