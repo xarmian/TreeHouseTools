@@ -7,7 +7,7 @@ import {
   Divider,
   SearchSelect,
   SearchSelectItem,
-  Switch,
+  // Switch,
   Text,
   DatePicker,
   TextInput,
@@ -166,9 +166,9 @@ const NFTSnapshotComponent: React.FC = () => {
     checkButtonDisabled();
   }, [collectionId, email, selectedTime, selectedDate, isScheduled, loading]);
 
-  const handleScheduledToggle = (value: boolean) => {
-    setIsScheduled(value);
-  };
+  // const handleScheduledToggle = (value: boolean) => {
+  //   setIsScheduled(value);
+  // };
 
   const generateCSVAndDownload = () => {
     if (!Array.isArray(tokensData)) {

@@ -5,9 +5,9 @@ import {
   Grid,
   Metric,
   Divider,
+  // Switch,
   SearchSelect,
   SearchSelectItem,
-  Switch,
   Text,
   DatePicker,
   TextInput,
@@ -212,9 +212,9 @@ const Arc200SnapshotComponent: React.FC = () => {
     checkButtonDisabled();
   }, [email, selectedTime, selectedDate, isScheduled, loading]);
 
-  const handleScheduledToggle = (value: boolean) => {
-    setIsScheduled(value);
-  };
+  // const handleScheduledToggle = (value: boolean) => {
+  //   setIsScheduled(value);
+  // };
 
   const generateCSVAndDownload = () => {
     const csvHeader = "Address,Balance\n";
